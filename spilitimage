@@ -73,6 +73,25 @@ def match_indices_with_third_image(indices, third_image):
             matches_list.append((index, matches))
     return matches_list
 
+def show_matched_blocks(query_image, matched_indices, blocks):
+    for index in matched_indices:
+        if 0 <= index < len(blocks):
+            block = blocks[index]
+            cv2.imshow(f'Matched Block {index}', block)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+
+def merge_blocks_into_one_image(blocks, num_rows, num_cols):
+    block_height, block_width = blocks[0].shape[:2]
+    merged_image = np.zeros((num_rows * block_height // 2, num_cols * block_width // 2, 3), dtype=np.uint8)
+    for r in range(num_rows):
+        for c in range(num_cols):
+            block_index = r * num_cols + c
+            block = cv2.resize(blocks[block_index], (block_width // 2, block_height // 2))  # Resize each block
+            merged_image[r * block_height // 2:(r + 1) * block_height // 2, c * block_width // 2:(c + 1) * block_width // 2] = block
+    return merged_image
+
 big_map_img = cv2.imread(r"C:\Users\small\yolov5-master\0313\jpg\14\23\23-1.jpg")
 # 指定要分割的行和列數
 num_rows = 4
@@ -83,6 +102,17 @@ blocks = split_image(big_map_img, num_rows, num_cols)
 # for i, block in enumerate(blocks):
 #     cv2.imshow(f"Block {i}", block)
 #     cv2.waitKey(0)
+
+# Show matched blocks
+matched_indices = [most_matched_block_index] + surrounding_indices
+matched_indices_sorted = sorted(matched_indices)
+print(matched_indices_sorted)
+# show_matched_blocks(first_image, matched_indices, blocks)
+
+merged_image = merge_blocks_into_one_image([blocks[index] for index in matched_indices_sorted], 3, 3)
+cv2.imshow('Merged Image', merged_image)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
 
 output_folder_name = r"C:\screencacha\runs\runs\train\exp21\weights\runs\runs\train\exp21\weights\output_frames"
 first_image = cv2.imread(f'{output_folder_name}/frame_0.jpg')
