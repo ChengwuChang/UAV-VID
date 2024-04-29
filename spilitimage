@@ -42,7 +42,7 @@ def match_features(query_image, train_images):
     return all_matches
 def find_most_matched_block(matches):
     most_matched_block_index = np.argmax(matches)
-    num_cols = 7  # Assuming 7 columns as per your previous code
+    num_cols = 6  # Assuming 7 columns as per your previous code
     # Calculate row and column index of the most matched block
     row_index = most_matched_block_index // num_cols
     col_index = most_matched_block_index % num_cols
@@ -94,25 +94,15 @@ def merge_blocks_into_one_image(blocks, num_rows, num_cols):
 
 big_map_img = cv2.imread(r"C:\Users\small\yolov5-master\0313\jpg\14\23\23-1.jpg")
 # 指定要分割的行和列數
-num_rows = 4
-num_cols = 7
+num_rows = 6
+num_cols = 6
 # 分割圖像
 blocks = split_image(big_map_img, num_rows, num_cols)
+# print(blocks)
 # # 顯示每個區塊
 # for i, block in enumerate(blocks):
 #     cv2.imshow(f"Block {i}", block)
 #     cv2.waitKey(0)
-
-# Show matched blocks
-matched_indices = [most_matched_block_index] + surrounding_indices
-matched_indices_sorted = sorted(matched_indices)
-print(matched_indices_sorted)
-# show_matched_blocks(first_image, matched_indices, blocks)
-
-merged_image = merge_blocks_into_one_image([blocks[index] for index in matched_indices_sorted], 3, 3)
-cv2.imshow('Merged Image', merged_image)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
 
 output_folder_name = r"C:\screencacha\runs\runs\train\exp21\weights\runs\runs\train\exp21\weights\output_frames"
 first_image = cv2.imread(f'{output_folder_name}/frame_0.jpg')
@@ -132,34 +122,83 @@ surrounding_blocks = [blocks[i] for i in surrounding_indices]
 
 # 將最匹配的區塊和周圍的區塊合併為一個列表
 blocks_to_match = [most_matched_block] + surrounding_blocks
-matches = match_features(second_image, blocks_to_match)
-# 創建一個字典來將區塊的索引映射到區塊本身
-block_index_to_block = {i: block for i, block in enumerate(blocks)}
-# 遍歷 blocks_to_match，找到它們在 blocks 中對應的索引
-for i, block_to_match in enumerate(blocks_to_match):
-    # 初始化索引
-    block_index = None
-    # 尋找 block_to_match 在 blocks 中的索引
-    for j, block in enumerate(blocks):
-        # 如果兩個陣列相等，則找到索引
-        if np.array_equal(block_to_match, block):
-            block_index = j
-            break
 
-    if block_index is not None:
-        print(f"區塊 {i}: 在 blocks 中的索引 = {block_index}")
-    else:
-        print(f"區塊 {i}: 找不到在 blocks 中的對應索引")
+# Show matched blocks
+matched_indices = [most_matched_block_index] + surrounding_indices
+matched_indices_sorted = sorted(matched_indices)
+print(matched_indices_sorted)
+# show_matched_blocks(first_image, matched_indices, blocks)
 
-# 將 most_matched_block_index 和 surrounding_indices 組合成一個列表
-all_indices_to_match = [most_matched_block_index] + surrounding_indices
+merged_image = merge_blocks_into_one_image([blocks[index] for index in matched_indices_sorted], 3, 3)
+cv2.imshow('Merged Image', merged_image)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
 
-# 使用定義的函數對索引進行匹配
-matches_with_third_image = match_indices_with_third_image(all_indices_to_match, third_image)
-
-# 印出匹配結果
-for index, matches in matches_with_third_image:
-    print(f"索引 {index} 與第三張圖像的匹配結果：{matches}")
-# print(matches)
+# matches = match_features(second_image, blocks_to_match)
+# most_matched_block_index, surrounding_indices = find_most_matched_block(matches)
+# print(f"匹配度最高的區塊是第 {most_matched_block_index} 塊，周圍的區塊索引為: {surrounding_indices}")
+# # 創建一個字典來將區塊的索引映射到區塊本身
+# block_index_to_block = {i: block for i, block in enumerate(blocks)}
+# # 遍歷 blocks_to_match，找到它們在 blocks 中對應的索引
+# for i, block_to_match in enumerate(blocks_to_match):
+#     # 初始化索引
+#     block_index = None
+#     # 尋找 block_to_match 在 blocks 中的索引
+#     for j, block in enumerate(blocks):
+#         # 如果兩個陣列相等，則找到索引
+#         if np.array_equal(block_to_match, block):
+#             block_index = j
+#             break
+#
+#     if block_index is not None:
+#         print(f"區塊 {i}: 在 blocks 中的索引 = {block_index}")
+#     else:
+#         print(f"區塊 {i}: 找不到在 blocks 中的對應索引")
+#
+# # 將 most_matched_block_index 和 surrounding_indices 組合成一個列表
+# all_indices_to_match = [most_matched_block_index] + surrounding_indices
+#
+# # 使用定義的函數對索引進行匹配
+# matches_with_third_image = match_indices_with_third_image(all_indices_to_match, third_image)
+#
+# # # 印出匹配結果
+# # for index, matches in matches_with_third_image:
+# #     print(f"索引 {index} 與第三張圖像的匹配結果：{matches}")
+#
+# blocks = split_image(big_map_img, num_rows, num_cols)
+# # def main():
+# #     for i in range(1,10):
+# #         matches = match_features(first_image, blocks)
+# #         most_matched_block_index, surrounding_indices = find_most_matched_block(matches)
+# #         # 取得最匹配的區塊以及其周圍的區塊
+# #         most_matched_block = blocks[most_matched_block_index]
+# #         surrounding_blocks = [blocks[i] for i in surrounding_indices]
+# #         # 將最匹配的區塊和周圍的區塊合併為一個列表
+# #         blocks_to_match = [most_matched_block] + surrounding_blocks
+# #         if i>1:
+# #             for i, block_to_match in enumerate(blocks_to_match):
+# #                 # 初始化索引
+# #                 block_index = None
+# #                 # 尋找 block_to_match 在 blocks 中的索引
+# #                 for j, block in enumerate(blocks):
+# #                     # 如果兩個陣列相等，則找到索引
+# #                     if np.array_equal(block_to_match, block):
+# #                         block_index = j
+# #                         break
+# #
+# #                 if block_index is not None:
+# #                     print(f"區塊 {i}: 在 blocks 中的索引 = {block_index}")
+# #                 else:
+# #                     print(f"區塊 {i}: 找不到在 blocks 中的對應索引")
+# #         else:
+# #             pass
+# #         blocks = blocks_to_match
+#
+#
+#
+#
+#
+#
+# # print(matches)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
