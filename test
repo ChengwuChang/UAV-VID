@@ -41,25 +41,43 @@ def match_features(query_image, train_images):
                 good_matches.append(m)
         all_matches.append(len(good_matches))
     return all_matches
+
 def find_most_matched_block(matches):
     most_matched_block_index = np.argmax(matches)
-    num_cols = 6  # Assuming columns as per your previous code
-    # Calculate row and column index of the most matched block
+    return most_matched_block_index
+def find_surrounding_indices(most_matched_block_index, num_rows, num_cols):
     row_index = most_matched_block_index // num_cols
     col_index = most_matched_block_index % num_cols
 
-    # Get indices of surrounding blocks
     surrounding_indices = []
     for dr in range(-1, 2):
         for dc in range(-1, 2):
             r = row_index + dr
             c = col_index + dc
-            # Check if the indices are within bounds
-            # 排除最匹配區塊本身和超出邊界的區塊
             if (dr != 0 or dc != 0) and 0 <= r < num_rows and 0 <= c < num_cols:
                 surrounding_indices.append(r * num_cols + c)
 
-    return most_matched_block_index, surrounding_indices
+    return surrounding_indices
+
+# def find_most_matched_block(matches):
+#     most_matched_block_index = np.argmax(matches)
+#     num_cols = 6  # Assuming columns as per your previous code
+#     # Calculate row and column index of the most matched block
+#     row_index = most_matched_block_index // num_cols
+#     col_index = most_matched_block_index % num_cols
+#
+#     # Get indices of surrounding blocks
+#     surrounding_indices = []
+#     for dr in range(-1, 2):
+#         for dc in range(-1, 2):
+#             r = row_index + dr
+#             c = col_index + dc
+#             # Check if the indices are within bounds
+#             # 排除最匹配區塊本身和超出邊界的區塊
+#             if (dr != 0 or dc != 0) and 0 <= r < num_rows and 0 <= c < num_cols:
+#                 surrounding_indices.append(r * num_cols + c)
+#
+#     return most_matched_block_index, surrounding_indices
 
 # 定義函數來將索引與對應的區塊匹配並返回結果列表
 def match_indices_with_third_image(indices, third_image):
@@ -94,20 +112,30 @@ big_map_img = cv2.imread(r"C:\Users\small\yolov5-master\0313\jpg\14\23\23-1.jpg"
 # 指定要分割的行和列數
 num_rows = 6
 num_cols = 6
-blocks = []
+new_num_rows = 3
+new_num_cols = 3
 blocks = split_image(big_map_img, num_rows, num_cols)
+# print(blocks)
 output_folder_name = r"C:\screencacha\runs\runs\train\exp21\weights\runs\runs\train\exp21\weights\output_frames"
 num = len(os.listdir(r"C:\screencacha\runs\runs\train\exp21\weights\runs\runs\train\exp21\weights\output_frames"))
 def main(blocks):
-    for i in range(1,num):
+    for i in range(1, num+1):
         image = cv2.imread(f'{output_folder_name}/frame_{i-1}.jpg')
         matches = match_features(image, blocks)
-        most_matched_block_index, surrounding_indices = find_most_matched_block(matches)
+        most_matched_block_index = find_most_matched_block(matches)
+        surrounding_indices = find_surrounding_indices(most_matched_block_index, num_rows, num_cols)
+        if i>1:
+            surrounding_indices = find_surrounding_indices(most_matched_block_index, new_num_rows, new_num_cols)
+        else:
+            pass
+        print(surrounding_indices)
+        # most_matched_block_index, surrounding_indices = find_most_matched_block(matches)
         # 取得最匹配的區塊以及其周圍的區塊
         most_matched_block = blocks[most_matched_block_index]
         surrounding_blocks = [blocks[i] for i in surrounding_indices]
         # 將最匹配的區塊和周圍的區塊合併為一個列表
         blocks_to_match = [most_matched_block] + surrounding_blocks
+        block_indices = []
         for i, block_to_match in enumerate(blocks_to_match):
             # 初始化索引
             block_index = None
@@ -119,16 +147,17 @@ def main(blocks):
                     break
 
             if block_index is not None:
+                block_indices.append(block_index)
                 print(f"區塊 {i}: 在 blocks 中的索引 = {block_index}")
             else:
                 print(f"區塊 {i}: 找不到在 blocks 中的對應索引")
-        blocks = block_index
-        print(blocks)
-        block_index_sorted = sorted(block_index)
-        show_matched_blocks(image, block_index_sorted, blocks)
-        merged_image = merge_blocks_into_one_image([blocks[index] for index in block_index_sorted], 3, 3)
+        block_indices_sorted = sorted(block_indices)
+        # show_matched_blocks(image, block_indices_sorted, blocks)
+        merged_image = merge_blocks_into_one_image([blocks[index] for index in block_indices_sorted], 3, 3)
         cv2.imshow('Merged Image', merged_image)
         cv2.waitKey(0)
+        sorted_blocks = [blocks[index] for index in block_indices_sorted]
+        blocks = sorted_blocks
 main(blocks)
 
 cv2.waitKey(0)
