@@ -47,10 +47,30 @@ def match_features(query_image, train_images):#query是大地圖
             dst_pts = np.float32([kp2[m.trainIdx].pt for m in good_matches]).reshape(-1, 1, 2)#小地圖
             M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
             matchesMask = mask.ravel().tolist()
+
+            # 計算小地圖的中心座標
+            x_center = np.mean([pt[0][0] for pt in dst_pts])
+            y_center = np.mean([pt[0][1] for pt in dst_pts])
+
+            # 將小地圖的中心座標轉換為numpy陣列
+            center_pt = np.array([[x_center, y_center]], dtype=np.float32).reshape(-1, 1, 2)
+
+            # 使用透視變換將小地圖的中心座標映射到大地圖上
+            big_map_center = cv2.perspectiveTransform(center_pt, M)
+            big_map_center = big_map_center.squeeze()
+            big_map_center_x, big_map_center_y = map(int, big_map_center)
+            print("映射後的中心座標:", big_map_center_x, big_map_center_y)
             # 使用透視變換將小地圖上的特徵點映射到大地圖上
-            big_map_keypoint = cv2.perspectiveTransform(dst_pts, M)
-            print("在小地圖上的特徵點座標：", dst_pts.squeeze())
-            print("映射到大地圖上的特徵點座標：", big_map_keypoint.squeeze())
+            # big_map_keypoint = cv2.perspectiveTransform(dst_pts, M)
+            # print("在小地圖上的特徵點座標：", dst_pts.squeeze())
+            # print("映射到大地圖上的特徵點座標：", big_map_keypoint.squeeze())
+            # x1, y1 = np.int32(big_map_keypoint[0][0])
+            # x2, y2 = np.int32(big_map_keypoint[1][0])
+            # x3, y3 = np.int32(big_map_keypoint[2][0])
+            # x4, y4 = np.int32(big_map_keypoint[3][0])
+            # center_x = (x1 + x2 + x3 + x4) / 4
+            # center_y = (y1 + y2 + y3 + y4) / 4
+            # print("中心坐標為:", center_x, center_y)
     return all_matches
 
 def find_most_matched_block(matches):
