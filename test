@@ -1,6 +1,7 @@
 import os
 import cv2
 import numpy as np
+
 def split_image(image, num_rows, num_cols):
     # 獲取圖像的高度和寬度
     height, width = image.shape[:2]
@@ -19,18 +20,18 @@ def split_image(image, num_rows, num_cols):
             # 提取當前區塊
             block = image[start_row:end_row, start_col:end_col]
             blocks.append(block)
-    return blocks
-def match_features(query_image, train_images):
+    return blocks , height , width
+def match_features(query_image, train_images):#query是大地圖
     # 初始化 SIFT 檢測器
     sift = cv2.SIFT_create()
-    # 使用 SIFT 找到 query_image 的關鍵點和描述子
+    # 使用 SIFT 找到 大地圖 的關鍵點和描述子
     kp1, des1 = sift.detectAndCompute(query_image, None)
     # 創建 FLANN 匹配器
     flann = cv2.FlannBasedMatcher()
     # 儲存所有匹配的結果
     all_matches = []
     for train_image in train_images:
-        # 使用 SIFT 找到 train_image 的關鍵點和描述子
+        # 使用 SIFT 找到 小地圖 的關鍵點和描述子
         kp2, des2 = sift.detectAndCompute(train_image, None)
         # 進行特徵匹配
         matches = flann.knnMatch(des1, des2, k=2)
@@ -40,10 +41,20 @@ def match_features(query_image, train_images):
             if m.distance < 0.7 * n.distance:
                 good_matches.append(m)
         all_matches.append(len(good_matches))
-    return all_matches
+    return all_matches ,good_matches,kp1 ,kp2
 
-def find_most_matched_block(matches):
+def find_most_matched_block(matches,good_matches,kp1,kp2):
     most_matched_block_index = np.argmax(matches)
+    #homographty
+    if len(good_matches) > 10:
+        src_pts = np.float32([kp1[m.queryIdx].pt for m in good_matches]).reshape(-1, 1, 2)
+        dst_pts = np.float32([kp2[m.trainIdx].pt for m in good_matches]).reshape(-1, 1, 2)
+        M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
+        matchesMask = mask.ravel().tolist()
+        # 使用透視變換將小地圖上的特徵點映射到大地圖上
+        big_map_keypoint = cv2.perspectiveTransform(dst_pts, M)
+        print("在小地圖上的特徵點座標：", dst_pts.squeeze())
+        print("映射到大地圖上的特徵點座標：", big_map_keypoint.squeeze())
     return most_matched_block_index
 def find_surrounding_indices(most_matched_block_index, num_rows, num_cols):
     row_index = most_matched_block_index // num_cols
@@ -108,21 +119,21 @@ def merge_blocks_into_one_image(blocks, num_rows, num_cols):
             block = cv2.resize(blocks[block_index], (block_width // 2, block_height // 2))  # Resize each block
             merged_image[r * block_height // 2:(r + 1) * block_height // 2, c * block_width // 2:(c + 1) * block_width // 2] = block
     return merged_image
-big_map_img = cv2.imread(r"C:\Users\small\yolov5-master\0313\jpg\14\23\23-1.jpg")
+big_map_img = cv2.imread("0313/0313/jpg/14/23/23-1.jpg")
 # 指定要分割的行和列數
 num_rows = 6
 num_cols = 6
 new_num_rows = 3
 new_num_cols = 3
-blocks = split_image(big_map_img, num_rows, num_cols)
+blocks ,height , width= split_image(big_map_img, num_rows, num_cols)
 # print(blocks)
-output_folder_name = r"C:\screencacha\runs\runs\train\exp21\weights\runs\runs\train\exp21\weights\output_frames"
-num = len(os.listdir(r"C:\screencacha\runs\runs\train\exp21\weights\runs\runs\train\exp21\weights\output_frames"))
+output_folder_name = "output_frames"
+num = len(os.listdir("output_frames"))
 def main(blocks):
     for i in range(1, num+1):
         image = cv2.imread(f'{output_folder_name}/frame_{i-1}.jpg')
-        matches = match_features(image, blocks)
-        most_matched_block_index = find_most_matched_block(matches)
+        matches ,good_matches, kp1, kp2 = match_features(image, blocks)
+        most_matched_block_index = find_most_matched_block(matches,good_matches ,kp1,kp2)
         surrounding_indices = find_surrounding_indices(most_matched_block_index, num_rows, num_cols)
         if i>1:
             surrounding_indices = find_surrounding_indices(most_matched_block_index, new_num_rows, new_num_cols)
