@@ -32,6 +32,7 @@ def match_features(query_image, train_images):
     flann = cv2.FlannBasedMatcher()
     # 儲存所有匹配的結果
     all_matches = []
+
     for train_image in train_images:
         # 使用 SIFT 找到 train_image 的關鍵點和描述子
         kp2, des2 = sift.detectAndCompute(train_image, None)
@@ -43,7 +44,38 @@ def match_features(query_image, train_images):
             if m.distance < 0.7 * n.distance:
                 good_matches.append(m)
         all_matches.append(len(good_matches))
-    return all_matches
+
+        if len(good_matches) > 10:
+            src_pts = np.float32([kp1[m.queryIdx].pt for m in good_matches]).reshape(-1, 1, 2)#大地圖
+            dst_pts = np.float32([kp2[m.trainIdx].pt for m in good_matches]).reshape(-1, 1, 2)#小地圖
+            M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
+            matchesMask = mask.ravel().tolist()
+
+            # 計算小地圖的中心座標
+            x_center = np.mean([pt[0][0] for pt in dst_pts])
+            y_center = np.mean([pt[0][1] for pt in dst_pts])
+
+            # 將小地圖的中心座標轉換為numpy陣列
+            center_pt = np.array([[x_center, y_center]], dtype=np.float32).reshape(-1, 1, 2)
+
+            # 使用透視變換將小地圖的中心座標映射到大地圖上
+            big_map_center = cv2.perspectiveTransform(center_pt, M)
+            big_map_center = big_map_center.squeeze()
+            big_map_center_x, big_map_center_y = map(int, big_map_center)
+            center = [big_map_center_x,big_map_center_y]
+            # print("映射後的中心座標:", big_map_center_x, big_map_center_y)
+            # 使用透視變換將小地圖上的特徵點映射到大地圖上
+            # big_map_keypoint = cv2.perspectiveTransform(dst_pts, M)
+            # print("在小地圖上的特徵點座標：", dst_pts.squeeze())
+            # print("映射到大地圖上的特徵點座標：", big_map_keypoint.squeeze())
+            # x1, y1 = np.int32(big_map_keypoint[0][0])
+            # x2, y2 = np.int32(big_map_keypoint[1][0])
+            # x3, y3 = np.int32(big_map_keypoint[2][0])
+            # x4, y4 = np.int32(big_map_keypoint[3][0])
+            # center_x = (x1 + x2 + x3 + x4) / 4
+            # center_y = (y1 + y2 + y3 + y4) / 4
+            # print("中心坐標為:", center_x, center_y)
+    return all_matches ,center
 
 def find_most_matched_block(matches):
     most_matched_block_index = np.argmax(matches)
@@ -180,7 +212,7 @@ num = len(os.listdir("output_frames"))
 def main(blocks):
     for i in range(1, num+1):
         image = cv2.imread(f'{output_folder_name}/frame_{i-1}.jpg')
-        matches = match_features(image, blocks)
+        matches,center = match_features(image, blocks)
         most_matched_block_index = find_most_matched_block(matches)
         best_index = None
         for j in range(0, (num_cols * num_rows)):
@@ -188,11 +220,8 @@ def main(blocks):
                 best_index = j
                 break
         print(f'最適合區域索引{best_index}')
+        print("中心座標為:",center)
         surrounding_indices = find_surrounding_indices(best_index, num_rows, num_cols)
-        # if i>1:
-        #     surrounding_indices = find_surrounding_indices(best_index, new_num_rows, new_num_cols)
-        # else:
-        #     surrounding_indices = find_surrounding_indices(best_index, num_rows, num_cols)
 
         print(surrounding_indices)
         # most_matched_block_index, surrounding_indices = find_most_matched_block(matches)
@@ -233,6 +262,11 @@ main(blocks)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
 
+main(blocks)
+
+cv2.waitKey(0)
+cv2.destroyAllWindows()
+
 
 # ----------------------------------------------------------------------------------------------------------
 
@@ -261,5 +295,4 @@ cv2.destroyAllWindows()
 # indices = [5, 3, 9]  # 假設這是你想要的區塊的索引號碼
 # selected_blocks = get_blocks_by_indices(blocks, indices)
 # print(selected_blocks)  # 這將打印出對應的區塊陣列
-
 
