@@ -176,8 +176,7 @@ def identify(merge_image,img):
 
         src_pts = np.float32(src_pts).reshape(-1, 1, 2)
         dst_pts = np.float32(dst_pts).reshape(-1, 1, 2)
-        M1, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
-        matchesMask = mask.ravel().tolist()
+
     for m2, n2 in matches2:
         if m2.distance < 0.7 * n2.distance:
             good2.append(m2)
@@ -214,6 +213,8 @@ def identify(merge_image,img):
 
 
 big_map_img = cv2.imread("0313/0313/jpg/14/23/23-1.jpg")
+height, width = big_map_img.shape[:2]
+
 # 指定要分割的行和列數
 num_rows = 6
 num_cols = 6
@@ -273,15 +274,17 @@ def main(blocks):
         center = identify(merged_image,image)
         center_x, center_y = map(int, center)
         cv2.namedWindow('position', cv2.WINDOW_NORMAL)
-        cv2.circle(big_map_img, (center_x, center_y), radius=25, color=(255, 255, 255), thickness=25)
+        # cv2.resizeWindow("position", width, height)  # 設置視窗大小為圖像大小
+        cv2.circle(big_map_img, (center_x, center_y), radius=20, color=(255, 255, 255), thickness=20)
         # cv2.imshow('Merged Image', merged_image)
-        cv2.imshow('position',big_map_img)
-        cv2.waitKey(0)
+        # cv2.imshow('position',big_map_img)
+        # cv2.waitKey(0)
         # sorted_blocks = [blocks[index] for index in block_indices_sorted]
         blocks = get_blocks_by_indices(all_blocks, block_indices_sorted)
 
 main(blocks)
 
+cv2.imshow('position', big_map_img)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
 
