@@ -213,7 +213,7 @@ def identify(merge_image,img):
     big_map_center_y = big_map_center[0][0][1]
 
     print([big_map_center_x, big_map_center_y])
-    return big_map_center_x,big_map_center_y
+    return [big_map_center_x,big_map_center_y]
 
 
 
@@ -274,8 +274,11 @@ def main(blocks):
         # show_matched_blocks(image, block_indices_sorted, blocks)
         # merged_image = merge_blocks_into_one_image([all_blocks[index] for index in block_indices_sorted], 3, 3)
         merged_image = merge_blocks_into_one_image([all_blocks[index] for index in block_indices_sorted],3,3)
-        big_map_centerx,big_map_centery = identify(merged_image,image)
+        center = identify(merged_image,image)
+        center_x, center_y = map(int, center)
+        cv2.circle(big_map_img, (center_x, center_y), radius=25, color=(255, 255, 255), thickness=25)
         cv2.imshow('Merged Image', merged_image)
+        cv2.imshow('position',big_map_img)
         cv2.waitKey(0)
         # sorted_blocks = [blocks[index] for index in block_indices_sorted]
         blocks = get_blocks_by_indices(all_blocks, block_indices_sorted)
