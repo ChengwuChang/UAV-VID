@@ -156,6 +156,7 @@ def identify(merge_image,img):
     kp_big_map,des_big_map =sift.detectAndCompute(big_map_img, None)
     kp, des = sift.detectAndCompute(merge_image, None)
     kp1, des1 = sift.detectAndCompute(img, None)
+
     # 進行特徵匹配
     matches1 = flann.knnMatch(des1, des, k=2)
     matches2 = flann.knnMatch(des, des_big_map, k=2)
@@ -170,9 +171,8 @@ def identify(merge_image,img):
         src_pts = []
         dst_pts = []
         for m1 in good1:
-            if m1.queryIdx < len(kp):
-                src_pts.append(kp[m1.queryIdx].pt)
-                dst_pts.append(kp1[m1.trainIdx].pt)
+            src_pts.append(kp1[m1.queryIdx].pt)
+            dst_pts.append(kp[m1.trainIdx].pt)
 
         src_pts = np.float32(src_pts).reshape(-1, 1, 2)
         dst_pts = np.float32(dst_pts).reshape(-1, 1, 2)
@@ -186,28 +186,24 @@ def identify(merge_image,img):
         src_pts2 = []
         dst_pts2 = []
         for m2 in good2:
-            if m2.queryIdx < len(kp):
-                src_pts2.append(kp[m2.queryIdx].pt)
-                dst_pts2.append(kp1[m2.trainIdx].pt)
+
+            src_pts2.append(kp[m2.queryIdx].pt)
+            dst_pts2.append(kp_big_map[m2.trainIdx].pt)
 
         src_pts2 = np.float32(src_pts2).reshape(-1, 1, 2)
         dst_pts2 = np.float32(dst_pts2).reshape(-1, 1, 2)
         M2, mask = cv2.findHomography(src_pts2, dst_pts2, cv2.RANSAC, 5.0)
         matchesMask = mask.ravel().tolist()
-    # 計算小地圖的中心座標
-    # 使用透視變換將小地圖的中心座標映射到merge地圖上
-    x1, y1 = np.int32(dst_pts[0][0])
-    x2, y2 = np.int32(dst_pts[1][0])
-    x3, y3 = np.int32(dst_pts[2][0])
-    x4, y4 = np.int32(dst_pts[3][0])
-    center_x = (x1 + x2 + x3 + x4) / 4
-    center_y = (y1 + y2 + y3 + y4) / 4
+
+
+    center_x = np.mean([pt[0][0] for pt in dst_pts])
+    center_y = np.mean([pt[0][1] for pt in dst_pts])
 
     # 使用透視變換將merge地圖的中心座標映射到big地圖上
     center = np.float32([[center_x, center_y]])
     center = np.array([center], dtype=np.float32)
+    # merge_map_center = cv2.perspectiveTransform(center, M1)
     big_map_center = cv2.perspectiveTransform(center, M2)
-
     # 得到在big_map_image上的中心座標
     big_map_center_x = big_map_center[0][0][0]
     big_map_center_y = big_map_center[0][0][1]
@@ -276,12 +272,14 @@ def main(blocks):
         merged_image = merge_blocks_into_one_image([all_blocks[index] for index in block_indices_sorted],3,3)
         center = identify(merged_image,image)
         center_x, center_y = map(int, center)
+        cv2.namedWindow('position', cv2.WINDOW_NORMAL)
         cv2.circle(big_map_img, (center_x, center_y), radius=25, color=(255, 255, 255), thickness=25)
-        cv2.imshow('Merged Image', merged_image)
+        # cv2.imshow('Merged Image', merged_image)
         cv2.imshow('position',big_map_img)
         cv2.waitKey(0)
         # sorted_blocks = [blocks[index] for index in block_indices_sorted]
         blocks = get_blocks_by_indices(all_blocks, block_indices_sorted)
+
 main(blocks)
 
 cv2.waitKey(0)
