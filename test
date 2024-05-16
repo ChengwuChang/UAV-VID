@@ -3,15 +3,23 @@ import cv2
 import numpy as np
 import math
 
+folder_name = "UAV_path-drone"  # 定義文件夾名稱
+current_dir = os.path.dirname(os.path.realpath(__file__))
+folder_path = os.path.join(current_dir, folder_name)   # 使用os.path.join連接路径和文件夾名稱
+if not os.path.exists(folder_path):   # 檢查是否存在
+    os.mkdir(folder_path)
+    print(f"文件夾 '{folder_path}' 已創建。")
+else:
+    print(f"文件夾 '{folder_path}' 已存在。")
+
 # 定義 FLANN 參數
 FLANN_INDEX_KDTREE = 1
 index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=5)
 search_params = dict(checks=50)
-
 flann = cv2.FlannBasedMatcher(index_params, search_params)  # 創建 FLANN 匹配器
-
 # 初始化 SIFT 檢測器
 sift = cv2.SIFT_create()
+
 def split_image(image, num_rows, num_cols):
     # 獲取圖像的高度和寬度
     height, width = image.shape[:2]
@@ -83,6 +91,14 @@ def match_features(query_image, train_images):
             # center_y = (y1 + y2 + y3 + y4) / 4
             # print("中心坐標為:", center_x, center_y)
 
+def rotate_point(x, y, cx, cy, angle):
+    # Convert angle to radians
+    theta = math.radians(angle)
+    # Perform rotation
+    x_rotated = cx + (x - cx) * math.cos(theta) - (y - cy) * math.sin(theta)
+    y_rotated = cy + (x - cx) * math.sin(theta) + (y - cy) * math.cos(theta)
+    return x_rotated, y_rotated
+
 
 def find_most_matched_block(matches):
     most_matched_block_index = np.argmax(matches)
@@ -152,6 +168,8 @@ def get_blocks_by_indices(all_blocks, indices):
     """
     blocks = [all_blocks[index] for index in indices]
     return blocks
+
+center_points = []
 def identify(merge_image,img):
     kp_big_map,des_big_map =sift.detectAndCompute(big_map_img, None)
     kp, des = sift.detectAndCompute(merge_image, None)
@@ -206,9 +224,10 @@ def identify(merge_image,img):
     # 得到在big_map_image上的中心座標
     big_map_center_x = big_map_center[0][0][0]
     big_map_center_y = big_map_center[0][0][1]
-
-    print([big_map_center_x, big_map_center_y])
-    return [big_map_center_x,big_map_center_y]
+    center_points.append((big_map_center_x, big_map_center_y))
+    print(center_points)
+    rotation_angle = np.arctan2(M2[1, 0], M2[0, 0]) * 180 / np.pi
+    return center_points ,rotation_angle
 
 
 
@@ -218,7 +237,6 @@ height, width = big_map_img.shape[:2]
 # 指定要分割的行和列數
 num_rows = 6
 num_cols = 6
-
 new_num_rows = 3
 new_num_cols = 3
 all_blocks = split_image(big_map_img, num_rows, num_cols)
@@ -228,6 +246,7 @@ output_folder_name = "output_frames"
 num = len(os.listdir("output_frames"))
 # -------------------------------------------------------------------------
 def main(blocks):
+    total_path = 0
     for i in range(1, num+1):
         image = cv2.imread(f'{output_folder_name}/frame_{i-1}.jpg')
         matches = match_features(image, blocks)
@@ -271,27 +290,58 @@ def main(blocks):
         # show_matched_blocks(image, block_indices_sorted, blocks)
         # merged_image = merge_blocks_into_one_image([all_blocks[index] for index in block_indices_sorted], 3, 3)
         merged_image = merge_blocks_into_one_image([all_blocks[index] for index in block_indices_sorted],3,3)
-        center = identify(merged_image,image)
-        center_x, center_y = map(int, center)
-        cv2.namedWindow('position', cv2.WINDOW_NORMAL)
+        center ,rotation_angle = identify(merged_image,image)
+        # center_x, center_y = map(int, center[0])
+        # cv2.namedWindow('position', cv2.WINDOW_NORMAL)
         # cv2.resizeWindow("position", width, height)  # 設置視窗大小為圖像大小
-        cv2.circle(big_map_img, (center_x, center_y), radius=20, color=(255, 255, 255), thickness=20)
+        # cv2.circle(big_map_img, (center_x, center_y), radius=20, color=(255, 255, 255), thickness=20)
         # cv2.imshow('Merged Image', merged_image)
         # cv2.imshow('position',big_map_img)
         # cv2.waitKey(0)
         # sorted_blocks = [blocks[index] for index in block_indices_sorted]
+
+        #畫三角形
+        for point in center_points:
+            center_x, center_y = map(int, point)
+            cv2.circle(big_map_img, (center_x, center_y), radius=5, color=(255, 255, 255), thickness=25)
+        base_length = 50
+        half_base = base_length // 2
+        height = int(0.866 * base_length)  # Height of an equilateral triangle is sqrt(3)/2 times the base length
+        offset_factor = 50  # Adjust this value as needed
+        # offset = offset_factor * angle / abs(angle) if angle != 0 else offset_factor
+
+        # Calculate coordinates of base vertices
+        vertex1 = (int(center_x - half_base - offset_factor), int(center_y + height))
+        vertex2 = (int(center_x - offset_factor), int(center_y - height))
+        vertex3 = (int(center_x + half_base - offset_factor), int(center_y + height))
+
+        # Rotate the base vertices around the center point by a given angle (e.g., 45 degrees)
+        # rotation_angle = 45  # Specify the rotation angle here
+        vertex1_rotated = rotate_point(vertex1[0], vertex1[1], center_x, center_y, rotation_angle)
+        vertex2_rotated = rotate_point(vertex2[0], vertex2[1], center_x, center_y, rotation_angle)
+        vertex3_rotated = rotate_point(vertex3[0], vertex3[1], center_x, center_y, rotation_angle)
+
+        # Draw the rotated triangle
+        vertices_rotated = np.array([vertex1_rotated, vertex2_rotated, vertex3_rotated], dtype=np.int32)
+        cv2.fillPoly(big_map_img, [vertices_rotated], color=(0+20*i, 255-20*i, 0))
+        # 將所有中心點連接成直線
+        for i in range(len(center_points) - 1):
+            cv2.line(big_map_img, tuple(map(int, center_points[i])), tuple(map(int, center_points[i + 1])), (0, 0, 255), 10)
+        #儲存到資料夾
+        path_file = os.path.join(folder_name,f'path_{total_path}.jpg')
         blocks = get_blocks_by_indices(all_blocks, block_indices_sorted)
+        cv2.imwrite(path_file, big_map_img)
+        total_path += 1
+
+    print("finished")
 
 main(blocks)
 
-cv2.imshow('position', big_map_img)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+# cv2.imshow('position', big_map_img)
+# cv2.waitKey(0)
+# cv2.destroyAllWindows()
 
-main(blocks)
 
-cv2.waitKey(0)
-cv2.destroyAllWindows()
 
 
 
