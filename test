@@ -2,6 +2,7 @@ import os
 import cv2
 import numpy as np
 import math
+import time
 
 folder_name = "UAV_path-drone"  # 定義文件夾名稱
 current_dir = os.path.dirname(os.path.realpath(__file__))
@@ -299,6 +300,7 @@ def main(blocks):
         # cv2.imshow('position',big_map_img)
         # cv2.waitKey(0)
         # sorted_blocks = [blocks[index] for index in block_indices_sorted]
+        print("rotation_angle:",rotation_angle)
 
         #畫三角形
         for point in center_points:
@@ -335,7 +337,22 @@ def main(blocks):
 
     print("finished")
 
+
+
+# 在程式開始運行前記錄時間
+start_time = time.time()
+
+# 執行你的程式碼
 main(blocks)
+
+# 在程式執行完成後記錄時間
+end_time = time.time()
+
+# 計算程式運行的總時間
+execution_time = end_time - start_time
+
+# 將運行時間打印出來
+print(f"程式運行時間： {execution_time} 秒")
 
 # cv2.imshow('position', big_map_img)
 # cv2.waitKey(0)
