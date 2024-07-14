@@ -1,3 +1,5 @@
+# stream.py
+
 import time
 import cv2
 import os
@@ -48,14 +50,15 @@ while cap.isOpened():
         print("無法讀取視頻帧")
         break
 
-    # 儲存圖片
+        # 儲存圖片
     frame_count += 1
     image_path = os.path.join(output_folder, f"frame_{frame_count}.jpg")
     cv2.imwrite(image_path, frame)
     print(f"已儲存 {image_path}")
 
-    # 將保存的圖片直接傳遞給main函數
-    main(blocks, frame)
+    # 讀取保存的圖片，並將其傳遞給main函數
+    saved_frame = cv2.imread(image_path)
+    main(blocks, saved_frame)
 
     # 顯示原始影像帧
     cv2.imshow('RTSP Stream', frame)
