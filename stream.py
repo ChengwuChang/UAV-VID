@@ -11,7 +11,7 @@ num_rows = 6
 num_cols = 6
 new_num_rows = 3
 new_num_cols = 3
-all_blocks = split_image(big_map_img, num_rows, num_cols)
+all_blocks, block_height, block_width = split_image(big_map_img, num_rows, num_cols)
 blocks = all_blocks
 
 # 定義RTSP流的URL
@@ -54,8 +54,8 @@ while cap.isOpened():
     cv2.imwrite(image_path, frame)
     print(f"已儲存 {image_path}")
 
-    # 將保存的圖片路徑傳遞給main函數
-    main(blocks, image_path)
+    # 將保存的圖片直接傳遞給main函數
+    main(blocks, frame)
 
     # 顯示原始影像帧
     cv2.imshow('RTSP Stream', frame)
