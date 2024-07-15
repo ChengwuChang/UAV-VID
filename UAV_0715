@@ -173,7 +173,7 @@ total_path = 0
 
 # center_points = []#若只有第二張沒有顯示兩個點把center point移到這邊
 
-def main(blocks,image):
+def main(blocks,image, center_points):
 
     matches = match_features(image, blocks)
     most_matched_block_index = find_most_matched_block(matches)
@@ -214,7 +214,7 @@ def main(blocks,image):
     # show_matched_blocks(image, block_indices_sorted, blocks)
     # merged_image = merge_blocks_into_one_image([all_blocks[index] for index in block_indices_sorted], 3, 3)
     merged_image = merge_blocks_into_one_image([all_blocks[index] for index in block_indices_sorted],3,3)
-    center_points = []
+
     center, rotation_angle = identify(center_points,merged_image, image,best_index,num_rows,num_cols,block_width,block_height)
 
     for point in center_points:
