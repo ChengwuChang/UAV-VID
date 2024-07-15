@@ -158,16 +158,16 @@ def get_blocks_by_indices(all_blocks, indices):
     return blocks
 
 big_map_img = cv2.imread("Big_map_collect/big_map_test.jpg")
-# 指定要分割的行和列數
+# # 指定要分割的行和列數
 num_rows = 6
 num_cols = 6
 
 new_num_rows = 3
 new_num_cols = 3
-all_blocks,block_height,block_width = split_image(big_map_img, num_rows, num_cols)
-blocks = all_blocks
-output_folder_name = "output_frames_test_stream"#待辨識的圖片
-num = len(os.listdir("output_frames"))
+# all_blocks,block_height,block_width = split_image(big_map_img, num_rows, num_cols)
+# blocks = all_blocks
+# output_folder_name = "output_frames_test_stream"#待辨識的圖片
+# num = len(os.listdir("output_frames"))
 total_path = 0
 # -------------------------------------------------------------------------
 
