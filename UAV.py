@@ -84,7 +84,7 @@ def show_matched_blocks(query_image, matched_indices, blocks):
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
-def merge_blocks_into_one_image(blocks, num_rows, num_cols):
+def merge_blocks_into_one_image(all_blocks,blocks, num_rows, num_cols):
     block_height, block_width = all_blocks[0].shape[:2]
     merged_image = np.zeros((num_rows * block_height // 2, num_cols * block_width // 2, 3), dtype=np.uint8)
     for r in range(num_rows):
@@ -161,7 +161,6 @@ big_map_img = cv2.imread("Big_map_collect/big_map_test.jpg")
 # # 指定要分割的行和列數
 num_rows = 6
 num_cols = 6
-
 new_num_rows = 3
 new_num_cols = 3
 # all_blocks,block_height,block_width = split_image(big_map_img, num_rows, num_cols)
@@ -173,7 +172,7 @@ total_path = 0
 
 # center_points = []#若只有第二張沒有顯示兩個點把center point移到這邊
 
-def main(all_blocks,blocks,image):
+def main(all_blocks,blocks,image,block_height,block_width):
 
     matches = match_features(image, blocks)
     most_matched_block_index = find_most_matched_block(matches)
@@ -212,7 +211,7 @@ def main(all_blocks,blocks,image):
     print(f'blocks 中的對應索引為 {block_indices_sorted}')
     # show_matched_blocks(image, block_indices_sorted, blocks)
     # merged_image = merge_blocks_into_one_image([all_blocks[index] for index in block_indices_sorted], 3, 3)
-    merged_image = merge_blocks_into_one_image([all_blocks[index] for index in block_indices_sorted],3,3)
+    merged_image = merge_blocks_into_one_image(all_blocks,[all_blocks[index] for index in block_indices_sorted],3,3)
     center_points = []
     center, rotation_angle = identify(center_points,merged_image, image,best_index,num_rows,num_cols,block_width,block_height)
 
