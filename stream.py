@@ -1,5 +1,3 @@
-# stream.py
-
 import time
 import cv2
 import os
@@ -57,8 +55,8 @@ while cap.isOpened():
     print(f"已儲存 {image_path}")
 
     # 讀取保存的圖片，並將其傳遞給main函數
-    saved_frame = cv2.imread(image_path)
-    main(blocks, saved_frame)
+    image = cv2.imread(frame)
+    blocks = main(all_blocks,blocks, image)
 
     # 顯示原始影像帧
     cv2.imshow('RTSP Stream', frame)
