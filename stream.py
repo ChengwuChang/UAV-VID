@@ -55,8 +55,8 @@ while cap.isOpened():
     print(f"已儲存 {image_path}")
 
     # 讀取保存的圖片，並將其傳遞給main函數
-    image = cv2.imread(frame)
-    blocks = main(all_blocks,blocks, image)
+    image = cv2.imread(image_path)
+    blocks = main(all_blocks,blocks, image,block_height,block_width)
 
     # 顯示原始影像帧
     cv2.imshow('RTSP Stream', frame)
