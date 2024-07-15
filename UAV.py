@@ -173,7 +173,7 @@ total_path = 0
 
 # center_points = []#若只有第二張沒有顯示兩個點把center point移到這邊
 
-def main(blocks,image):
+def main(all_blocks,blocks,image):
 
     matches = match_features(image, blocks)
     most_matched_block_index = find_most_matched_block(matches)
@@ -184,10 +184,9 @@ def main(blocks,image):
             break
     print(f'最適合區域索引{best_index}')
     surrounding_indices = find_surrounding_indices(best_index, num_rows, num_cols)
-
-    print(surrounding_indices)
+    print(f'surrounding_indices = {surrounding_indices}')
     # 取得最匹配的區塊以及其周圍的區塊
-    print(best_index)
+    print(f'best_index = {best_index}')
     most_matched_block = all_blocks[best_index]
     surrounding_blocks = [all_blocks[i] for i in surrounding_indices]
     # 將最匹配的區塊和周圍的區塊合併為一個列表
@@ -210,7 +209,7 @@ def main(blocks,image):
         else:
             print(f"區塊 {i}: 找不到在 blocks 中的對應索引")
     block_indices_sorted = sorted(block_indices)
-    print(block_indices_sorted)
+    print(f'blocks 中的對應索引為 {block_indices_sorted}')
     # show_matched_blocks(image, block_indices_sorted, blocks)
     # merged_image = merge_blocks_into_one_image([all_blocks[index] for index in block_indices_sorted], 3, 3)
     merged_image = merge_blocks_into_one_image([all_blocks[index] for index in block_indices_sorted],3,3)
@@ -245,16 +244,12 @@ def main(blocks,image):
         cv2.line(big_map_img, tuple(map(int, center_points[i])), tuple(map(int, center_points[i + 1])), (0, 0, 255), 10)
     # 儲存到資料夾
     path_file = os.path.join(folder_name, f'path_{total_path}.jpg')
-    blocks = get_blocks_by_indices(all_blocks, block_indices_sorted)
+    # blocks = get_blocks_by_indices(all_blocks, block_indices_sorted)
     cv2.imwrite(path_file, big_map_img)
     total_path + 1#有可能會沒+1 但理論上應該會存成path_0 path2
 
-
-    # cv2.imshow('Merged Image', merged_image)
-    # cv2.waitKey(0)
-
-    # sorted_blocks = [blocks[index] for index in block_indices_sorted]
     blocks = get_blocks_by_indices(all_blocks, block_indices_sorted)
+    return blocks
 start_time = time.time()
 # main(blocks)
 
@@ -271,7 +266,5 @@ execution_time = end_time - start_time
 print(f"程式運行時間： {execution_time} 秒")
 
 
-
-# ----------------------------------------------------------------------------------------------------------
 
 
