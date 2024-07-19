@@ -55,23 +55,35 @@ def match_features(query_image, train_images):
         all_matches.append(len(good_matches))
     return all_matches
 
-def find_most_matched_block(matches):
-    most_matched_block_index = np.argmax(matches)
-    return most_matched_block_index
+
 def find_surrounding_indices(most_matched_block_index, num_rows, num_cols):
-    # most_matched_block_index=15
     row_index = most_matched_block_index // num_cols
     col_index = most_matched_block_index % num_cols
 
     surrounding_indices = []
-    for dr in range(-1, 2):
-        for dc in range(-1, 2):
-            r = row_index + dr
-            c = col_index + dc
-            if (dr != 0 or dc != 0) and 0 <= r < num_rows and 0 <= c < num_cols:
-                surrounding_indices.append(r * num_cols + c)
+    offsets = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
+
+    for dr, dc in offsets:
+        r = row_index + dr
+        c = col_index + dc
+        if 0 <= r < num_rows and 0 <= c < num_cols:
+            surrounding_indices.append(r * num_cols + c)
 
     return surrounding_indices
+
+
+def find_most_matched_and_surrounding_indices(matches, all_blocks, num_rows, num_cols):
+    most_matched_block_index = np.argmax(matches)
+
+    best_index = None
+    for j in range(num_cols * num_rows):
+        if np.array_equal(all_blocks[j], all_blocks[most_matched_block_index]):
+            best_index = j
+            break
+
+    surrounding_indices = find_surrounding_indices(best_index, num_rows, num_cols)
+
+    return best_index, surrounding_indices
 
 # 定義函數來將索引與對應的區塊匹配並返回結果列表
 
@@ -157,7 +169,7 @@ def get_blocks_by_indices(all_blocks, indices):
     blocks = [all_blocks[index] for index in indices]
     return blocks
 
-big_map_img = cv2.imread("14/jpg/14/23/23-1.jpg")
+big_map_img = cv2.imread("Big_map_collect/23-1.jpg")
 # 指定要分割的行和列數
 num_rows = 6
 num_cols = 6
@@ -173,21 +185,14 @@ total_path = 0
 
 # center_points = []#若只有第二張沒有顯示兩個點把center point移到這邊
 
-def main(blocks,image, center_points):
+def main(blocks,image):
 
     matches = match_features(image, blocks)
-    most_matched_block_index = find_most_matched_block(matches)
-    best_index = None
-    for j in range(0, (num_cols * num_rows)):
-        if np.array_equal(all_blocks[j], blocks[most_matched_block_index]):
-            best_index = j
-            break
-    print(f'最適合區域索引{best_index}')
-    surrounding_indices = find_surrounding_indices(best_index, num_rows, num_cols)
+    best_index, surrounding_indices = find_most_matched_and_surrounding_indices(matches, all_blocks, num_rows, num_cols)
 
+    print(f'最適合區域索引 {best_index}')
     print(f'surrounding_indices = {surrounding_indices}')
-    # 取得最匹配的區塊以及其周圍的區塊
-    print(f'best_index = {best_index}')
+
     most_matched_block = all_blocks[best_index]
     surrounding_blocks = [all_blocks[i] for i in surrounding_indices]
     # 將最匹配的區塊和周圍的區塊合併為一個列表
@@ -214,7 +219,7 @@ def main(blocks,image, center_points):
     # show_matched_blocks(image, block_indices_sorted, blocks)
     # merged_image = merge_blocks_into_one_image([all_blocks[index] for index in block_indices_sorted], 3, 3)
     merged_image = merge_blocks_into_one_image([all_blocks[index] for index in block_indices_sorted],3,3)
-
+    center_points = []
     center, rotation_angle = identify(center_points,merged_image, image,best_index,num_rows,num_cols,block_width,block_height)
 
     for point in center_points:
@@ -276,5 +281,4 @@ print(f"程式運行時間： {execution_time} 秒")
 
 
 # ----------------------------------------------------------------------------------------------------------
-
 
