@@ -55,23 +55,38 @@ def match_features(query_image, train_images):
         all_matches.append(len(good_matches))
     return all_matches
 
-def find_most_matched_block(matches):
-    most_matched_block_index = np.argmax(matches)
-    return most_matched_block_index
 def find_surrounding_indices(most_matched_block_index, num_rows, num_cols):
-    # most_matched_block_index=15
     row_index = most_matched_block_index // num_cols
     col_index = most_matched_block_index % num_cols
 
     surrounding_indices = []
-    for dr in range(-1, 2):
-        for dc in range(-1, 2):
-            r = row_index + dr
-            c = col_index + dc
-            if (dr != 0 or dc != 0) and 0 <= r < num_rows and 0 <= c < num_cols:
-                surrounding_indices.append(r * num_cols + c)
+    offsets = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
+
+    for dr, dc in offsets:
+        r = row_index + dr
+        c = col_index + dc
+        if 0 <= r < num_rows and 0 <= c < num_cols:
+            surrounding_indices.append(r * num_cols + c)
 
     return surrounding_indices
+
+
+def find_most_matched_and_surrounding_indices(matches, all_blocks, num_rows, num_cols):
+    most_matched_block_index = np.argmax(matches)
+
+    best_index = None
+    for j in range(num_cols * num_rows):
+        if np.array_equal(all_blocks[j], all_blocks[most_matched_block_index]):
+            best_index = j
+            break
+
+    surrounding_indices = find_surrounding_indices(best_index, num_rows, num_cols)
+
+    return best_index, surrounding_indices
+
+def find_most_matched_block(matches):
+    most_matched_block_index = np.argmax(matches)
+    return most_matched_block_index
 
 # 定義函數來將索引與對應的區塊匹配並返回結果列表
 
@@ -173,19 +188,18 @@ total_path = 0
 # center_points = []#若只有第二張沒有顯示兩個點把center point移到這邊
 
 def main(all_blocks,blocks,image,block_height,block_width):
-
     matches = match_features(image, blocks)
+    # best_index, surrounding_indices = find_most_matched_and_surrounding_indices(matches, all_blocks, num_rows, num_cols)
     most_matched_block_index = find_most_matched_block(matches)
     best_index = None
     for j in range(0, (num_cols * num_rows)):
         if np.array_equal(all_blocks[j], blocks[most_matched_block_index]):
             best_index = j
             break
-    print(f'最適合區域索引{best_index}')
     surrounding_indices = find_surrounding_indices(best_index, num_rows, num_cols)
+    print(f'最適合區域索引 {best_index}')
     print(f'surrounding_indices = {surrounding_indices}')
-    # 取得最匹配的區塊以及其周圍的區塊
-    print(f'best_index = {best_index}')
+
     most_matched_block = all_blocks[best_index]
     surrounding_blocks = [all_blocks[i] for i in surrounding_indices]
     # 將最匹配的區塊和周圍的區塊合併為一個列表
@@ -211,9 +225,10 @@ def main(all_blocks,blocks,image,block_height,block_width):
     print(f'blocks 中的對應索引為 {block_indices_sorted}')
     # show_matched_blocks(image, block_indices_sorted, blocks)
     # merged_image = merge_blocks_into_one_image([all_blocks[index] for index in block_indices_sorted], 3, 3)
-    merged_image = merge_blocks_into_one_image(all_blocks,[all_blocks[index] for index in block_indices_sorted],3,3)
+    merged_image = merge_blocks_into_one_image([all_blocks[index] for index in block_indices_sorted], 3, 3)
     center_points = []
-    center, rotation_angle = identify(center_points,merged_image, image,best_index,num_rows,num_cols,block_width,block_height)
+    center, rotation_angle = identify(center_points, merged_image, image, best_index, num_rows, num_cols, block_width,
+                                      block_height)
 
     for point in center_points:
         center_x, center_y = map(int, point)
@@ -237,18 +252,24 @@ def main(all_blocks,blocks,image,block_height,block_width):
 
     # Draw the rotated triangle
     vertices_rotated = np.array([vertex1_rotated, vertex2_rotated, vertex3_rotated], dtype=np.int32)
-    cv2.fillPoly(big_map_img, [vertices_rotated], color=(0+20*i, 255-20*i, 0))
+    cv2.fillPoly(big_map_img, [vertices_rotated], color=(0 + 20 * i, 255 - 20 * i, 0))
     # 將所有中心點連接成直線
     for i in range(len(center_points) - 1):
         cv2.line(big_map_img, tuple(map(int, center_points[i])), tuple(map(int, center_points[i + 1])), (0, 0, 255), 10)
     # 儲存到資料夾
     path_file = os.path.join(folder_name, f'path_{total_path}.jpg')
-    # blocks = get_blocks_by_indices(all_blocks, block_indices_sorted)
+    blocks = get_blocks_by_indices(all_blocks, block_indices_sorted)
     cv2.imwrite(path_file, big_map_img)
-    total_path + 1#有可能會沒+1 但理論上應該會存成path_0 path2
+    total_path + 1  # 有可能會沒+1 但理論上應該會存成path_0 path2
 
+    # cv2.imshow('Merged Image', merged_image)
+    # cv2.waitKey(0)
+
+    # sorted_blocks = [blocks[index] for index in block_indices_sorted]
     blocks = get_blocks_by_indices(all_blocks, block_indices_sorted)
     return blocks
+
+
 start_time = time.time()
 # main(blocks)
 
@@ -263,6 +284,8 @@ end_time = time.time()
 execution_time = end_time - start_time
 # 將運行時間打印出來
 print(f"程式運行時間： {execution_time} 秒")
+
+# ----------------------------------------------------------------------------------------------------------
 
 
 
