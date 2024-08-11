@@ -190,7 +190,7 @@ def get_blocks_by_indices(all_blocks, indices):
     blocks = [all_blocks[index] for index in indices]
     return blocks
 
-big_map_img = cv2.imread("14/jpg/14/23/23-1.jpg")
+big_map_img = cv2.imread("Big_map_collect/23-1.jpg")
 # 指定要分割的行和列數
 num_rows = 6
 num_cols = 6
