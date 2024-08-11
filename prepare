@@ -1,0 +1,32 @@
+import sys
+from PyQt5.QtWidgets import QApplication, QLabel, QWidget, QVBoxLayout
+from PyQt5.QtCore import Qt
+
+class MouseTracker(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.initUI()
+
+    def initUI(self):
+        self.label = QLabel(self)
+        self.label.setAlignment(Qt.AlignCenter)
+
+        layout = QVBoxLayout()
+        layout.addWidget(self.label)
+        self.setLayout(layout)
+
+        self.setMouseTracking(True)
+        self.setWindowTitle('Mouse Tracker')
+        self.setGeometry(100, 100, 300, 200)
+
+    def mouseMoveEvent(self, event):
+        x = event.globalX()
+        y = event.globalY()
+        text = f'Mouse coordinates: ({x}, {y})'
+        self.label.setText(text)
+
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    tracker = MouseTracker()
+    tracker.show()
+    sys.exit(app.exec_())
