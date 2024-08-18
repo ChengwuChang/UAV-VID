@@ -35,7 +35,8 @@ def split_image(image, num_rows, num_cols):
     return blocks,block_height,block_width
 def match_features(query_image, train_images):
     # 初始化 SIFT 檢測器
-    sift = cv2.SIFT_create()
+    # #0819修改 註解39行 減少每次初始化sift
+    # sift = cv2.SIFT_create()
     # 使用 SIFT 找到 query_image 的關鍵點和描述子
     kp1, des1 = sift.detectAndCompute(query_image, None)
     # 創建 FLANN 匹配器
@@ -116,7 +117,9 @@ def rotate_point(x, y, cx, cy, angle):
     x_rotated = cx + (x - cx) * math.cos(theta) - (y - cy) * math.sin(theta)
     y_rotated = cy + (x - cx) * math.sin(theta) + (y - cy) * math.cos(theta)
     return x_rotated, y_rotated
-def identify(center_points,merge_image,img,best_index,num_rows,num_cols,block_width,block_height):
+
+###修改處0817 確保無法匹配後的後續返回none
+def identify(center_points, merge_image, img, best_index, num_rows, num_cols, block_width, block_height):
     kp, des = sift.detectAndCompute(merge_image, None)
     kp1, des1 = sift.detectAndCompute(img, None)
 
@@ -127,7 +130,8 @@ def identify(center_points,merge_image,img,best_index,num_rows,num_cols,block_wi
     for m1, n1 in matches1:
         if m1.distance < 0.7 * n1.distance:
             good1.append(m1)
-    #homography
+
+    # Homography
     if len(good1) > 10:
         src_pts = []
         dst_pts = []
@@ -137,26 +141,37 @@ def identify(center_points,merge_image,img,best_index,num_rows,num_cols,block_wi
 
         src_pts = np.float32(src_pts).reshape(-1, 1, 2)
         dst_pts = np.float32(dst_pts).reshape(-1, 1, 2)
+
         M1, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
 
+        # 如果M1是None，处理或返回None
+        if M1 is None:
+            print("Homography calculation failed.")
+            return None, None
 
-    center_x = np.mean([pt[0][0] for pt in dst_pts])
-    center_y = np.mean([pt[0][1] for pt in dst_pts])
+        # 计算图像中心的均值
+        center_x = np.mean([pt[0][0] for pt in dst_pts])
+        center_y = np.mean([pt[0][1] for pt in dst_pts])
 
-    # 使用透視變換將merge地圖的中心座標映射到big地圖上
-    center = np.float32([[center_x, center_y]])
-    center = np.array([center], dtype=np.float32)
-    merge_map_center = cv2.perspectiveTransform(center, M1)
+        # 使用透视变换将合并图像的中心坐标映射到大图像上
+        center = np.float32([[center_x, center_y]])
+        center = np.array([center], dtype=np.float32)
+        merge_map_center = cv2.perspectiveTransform(center, M1)
 
-    # 得到在big_map_image上的中心座標
-    big_map_center_x = merge_map_center[0][0][0]+(((best_index-1) %  num_cols) +0.5) * block_width
-    big_map_center_y = merge_map_center[0][0][1]+(((best_index-1) // num_cols) ) * block_height
+        # 得到在big_map_image上的中心坐标
+        big_map_center_x = merge_map_center[0][0][0] + (((best_index - 1) % num_cols) + 0.5) * block_width
+        big_map_center_y = merge_map_center[0][0][1] + (((best_index - 1) // num_cols)) * block_height
 
-    center_points.append((big_map_center_x, big_map_center_y))
-    print(merge_map_center[0][0][0],merge_map_center[0][0][1])
-    print(center_points)
-    rotation_angle = np.arctan2(M1[1, 0], M1[0, 0]) * 180 / np.pi
-    return center_points ,rotation_angle
+        center_points.append((big_map_center_x, big_map_center_y))
+        print(merge_map_center[0][0][0], merge_map_center[0][0][1])
+        print(center_points)
+        rotation_angle = np.arctan2(M1[1, 0], M1[0, 0]) * 180 / np.pi
+
+        return center_points, rotation_angle
+    else:
+        print("Not enough good matches for homography.")
+        return None, None
+
 
 def get_blocks_by_indices(all_blocks, indices):
     """
@@ -286,7 +301,6 @@ execution_time = end_time - start_time
 print(f"程式運行時間： {execution_time} 秒")
 
 # ----------------------------------------------------------------------------------------------------------
-
 
 
 
