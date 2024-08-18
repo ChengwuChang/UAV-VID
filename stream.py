@@ -4,7 +4,6 @@ import os
 from UAV import split_image, main
 import shutil
 
-
 # 定義調整參數
 big_map_img = cv2.imread("Big_map_collect/23-1.jpg")
 
@@ -17,8 +16,10 @@ all_blocks, block_height, block_width = split_image(big_map_img, num_rows, num_c
 blocks = all_blocks
 
 # 定義RTSP流的URL
-url = 'rtsp://admin:53373957@192.168.144.108:554/cam/realmonitor?channel=1&subtype=1'
-
+#四旋翼無人機URL
+url = '192.168.144.108'
+#10萬相機URL
+# url = 'rtsp://admin:53373957@192.168.144.108:554/cam/realmonitor?channel=1&subtype=1'
 # 打開RTSP流
 cap = cv2.VideoCapture(url)
 
@@ -47,6 +48,7 @@ def clear_folder(folder_path):
         except Exception as e:
             print(f"刪除 {file_path} 時發生錯誤: {e}")
 
+
 # 指定要清空的資料夾路徑
 folder_path = 'captured_frames'
 # 清空資料夾
@@ -59,58 +61,103 @@ os.makedirs(output_folder, exist_ok=True)
 current_directory = os.getcwd()
 print("當前工作目錄:", current_directory)
 
-
 # 設置緩衝區大小為1，確保處理的是最新帧
 cap.set(cv2.CAP_PROP_BUFFERSIZE, 0.5)
 
 center_points = []
 frame_count = 0
 
+try:
+    while cap.isOpened():
+        # 讀取幀並處理
+        # 讀取一帧視頻
+        ret, frame = cap.read()
+
+        # 檢查是否成功讀取
+        if not ret:
+            print("無法讀取視頻帧")
+            break
+
+            # 儲存圖片
+        frame_count += 1
+        image_path = os.path.join(output_folder, f"frame_{frame_count}.jpg")
+        cv2.imwrite(image_path, frame)
+        print(f"已儲存 {image_path}")
+
+        # 讀取保存的圖片，並將其傳遞給main函數
+        image = cv2.imread(image_path)
+        try:
+            blocks = main(all_blocks, blocks, image, block_height, block_width)
+        except Exception as e:
+            print(f"處理圖片時發生錯誤: {e}")
+            continue
+
+        image_folder = 'UAV_path-drone'
+        # 將影像寬度調整為螢幕寬度的一半，高度按比例縮放
+        image = cv2.imread(f'{image_folder}/path_0.jpg', 1)
+
+        image_name = os.path.basename(f'{image_folder}/path_0.jpg')
+        # 在視窗中顯示影像名稱顯示圖片
+        cv2.setWindowTitle('Image', image_name)
+        cv2.imshow('Image', image)
+
+        time.sleep(2)
+
+        # 顯示原始影像帧
+        cv2.imshow('RTSP Stream', frame)
+
+        # 按下 'q' 鍵退出循環
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+finally:
+    cap.release()
+    cv2.destroyAllWindows()
+
+#0819 修改
+
 # 循環處理每一帧
-while cap.isOpened():
-    # 讀取一帧視頻
-    ret, frame = cap.read()
-
-    # 檢查是否成功讀取
-    if not ret:
-        print("無法讀取視頻帧")
-        break
-
-        # 儲存圖片
-    frame_count += 1
-    image_path = os.path.join(output_folder, f"frame_{frame_count}.jpg")
-    cv2.imwrite(image_path, frame)
-    print(f"已儲存 {image_path}")
-
-    # 讀取保存的圖片，並將其傳遞給main函數
-    image = cv2.imread(image_path)
-    try:
-        blocks = main(all_blocks,blocks, image,block_height,block_width)
-    except Exception as e:
-        print(f"處理圖片時發生錯誤: {e}")
-        continue
-
-    image_folder = 'UAV_path-drone'
-    # 將影像寬度調整為螢幕寬度的一半，高度按比例縮放
-    image = cv2.imread(f'{image_folder}/path_0.jpg', 1)
-    
-    image_name = os.path.basename(f'{image_folder}/path_0.jpg')
-    # 在視窗中顯示影像名稱顯示圖片
-    cv2.setWindowTitle('Image', image_name)
-    cv2.imshow('Image', image)
-
-    time.sleep(2)
-    
-    # 顯示原始影像帧
-    cv2.imshow('RTSP Stream', frame)
-
-    
-    # 按下 'q' 鍵退出循環
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-
-# 釋放視頻捕獲對象
-cap.release()
-
-# 關閉所有OpenCV窗口
-cv2.destroyAllWindows()
+# while cap.isOpened():
+    # # 讀取一帧視頻
+    # ret, frame = cap.read()
+    #
+    # # 檢查是否成功讀取
+    # if not ret:
+    #     print("無法讀取視頻帧")
+    #     break
+    #
+    #     # 儲存圖片
+    # frame_count += 1
+    # image_path = os.path.join(output_folder, f"frame_{frame_count}.jpg")
+    # cv2.imwrite(image_path, frame)
+    # print(f"已儲存 {image_path}")
+    #
+    # # 讀取保存的圖片，並將其傳遞給main函數
+    # image = cv2.imread(image_path)
+    # try:
+    #     blocks = main(all_blocks, blocks, image, block_height, block_width)
+    # except Exception as e:
+    #     print(f"處理圖片時發生錯誤: {e}")
+    #     continue
+    #
+    # image_folder = 'UAV_path-drone'
+    # # 將影像寬度調整為螢幕寬度的一半，高度按比例縮放
+    # image = cv2.imread(f'{image_folder}/path_0.jpg', 1)
+    #
+    # image_name = os.path.basename(f'{image_folder}/path_0.jpg')
+    # # 在視窗中顯示影像名稱顯示圖片
+    # cv2.setWindowTitle('Image', image_name)
+    # cv2.imshow('Image', image)
+    #
+    # time.sleep(2)
+    #
+    # # 顯示原始影像帧
+    # cv2.imshow('RTSP Stream', frame)
+    #
+    # # 按下 'q' 鍵退出循環
+    # if cv2.waitKey(1) & 0xFF == ord('q'):
+    #     break
+# # 釋放視頻捕獲對象
+# cap.release()
+#
+# # 關閉所有OpenCV窗口
+# cv2.destroyAllWindows()
