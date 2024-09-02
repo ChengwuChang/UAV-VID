@@ -59,7 +59,7 @@ center_points = []
 frame_count = 0
 while True:
     # 截取指定區域
-
+    start_time = time.time()#0831修改處(計算單張時間)
     myScreenshot = pyautogui.screenshot(region=(x1, y1, x2, y2))
     save_path = os.path.join(output_folder, f'frame_{frame_count}.jpg')
     myScreenshot.save(save_path)
@@ -83,12 +83,13 @@ while True:
     # 縮放圖像大小
     resized_image = cv2.resize(image, (new_width, new_height))
     image_name = os.path.basename(f'{image_folder}/path_0.jpg')
+    end_time = time.time()#0831修改處(計算單張時間)
     # 在視窗中顯示影像名稱顯示縮放後的圖片
     cv2.setWindowTitle('Image', image_name)
     cv2.imshow('Image', resized_image)
 
     time.sleep(2)
-
+    print("單張辨識所花時間 = %.3f 秒"%(end_time - start_time))#0831修改處(計算單張時間)
 
 
     # 檢查是否按下 'q' 鍵來終止
