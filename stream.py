@@ -77,7 +77,7 @@ try:
         if not ret:
             print("無法讀取視頻帧")
             break
-
+        start_time = time.time()#0831修改處(計算單張時間)
             # 儲存圖片
         frame_count += 1
         image_path = os.path.join(output_folder, f"frame_{frame_count}.jpg")
@@ -100,11 +100,11 @@ try:
         # 在視窗中顯示影像名稱顯示圖片
         cv2.setWindowTitle('Image', image_name)
         cv2.imshow('Image', image)
-
+        end_time = time.time()#0831修改處(計算單張時間)
         time.sleep(2)
-
+        print("單張辨識所花時間 = %.3f 秒"%(end_time - start_time))#0831修改處(計算單張時間)
         # 顯示原始影像帧
-        cv2.imshow('RTSP Stream', frame)
+        # cv2.imshow('RTSP Stream', frame)
 
         # 按下 'q' 鍵退出循環
         if cv2.waitKey(1) & 0xFF == ord('q'):
