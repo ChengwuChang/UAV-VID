@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>982</width>
-    <height>628</height>
+    <width>1017</width>
+    <height>657</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -56,7 +56,7 @@
             <string/>
            </property>
            <property name="pixmap">
-            <pixmap resource="resource.qrc">:/icon/uav.png</pixmap>
+            <pixmap>:/icon/uav.png</pixmap>
            </property>
            <property name="scaledContents">
             <bool>true</bool>
@@ -76,7 +76,7 @@
             <string/>
            </property>
            <property name="icon">
-            <iconset resource="resource.qrc">
+            <iconset>
              <normaloff>:/icon/home.png</normaloff>:/icon/home.png</iconset>
            </property>
            <property name="checkable">
@@ -93,7 +93,7 @@
             <string/>
            </property>
            <property name="icon">
-            <iconset resource="resource.qrc">
+            <iconset>
              <normaloff>:/icon/map.png</normaloff>:/icon/map.png</iconset>
            </property>
            <property name="checkable">
@@ -110,7 +110,7 @@
             <string/>
            </property>
            <property name="icon">
-            <iconset resource="resource.qrc">
+            <iconset>
              <normaloff>:/icon/chart.png</normaloff>:/icon/chart.png</iconset>
            </property>
            <property name="checkable">
@@ -127,7 +127,7 @@
             <string/>
            </property>
            <property name="icon">
-            <iconset resource="resource.qrc">
+            <iconset>
              <normaloff>:/icon/youtube.png</normaloff>:/icon/youtube.png</iconset>
            </property>
            <property name="checkable">
@@ -159,7 +159,7 @@
           <string/>
          </property>
          <property name="icon">
-          <iconset resource="resource.qrc">
+          <iconset>
            <normaloff>:/icon/cancel.png</normaloff>:/icon/cancel.png</iconset>
          </property>
          <property name="checkable">
@@ -208,7 +208,7 @@
             <string/>
            </property>
            <property name="pixmap">
-            <pixmap resource="resource.qrc">:/icon/uav.png</pixmap>
+            <pixmap>:/icon/uav.png</pixmap>
            </property>
            <property name="scaledContents">
             <bool>true</bool>
@@ -246,7 +246,7 @@
             <string>Home</string>
            </property>
            <property name="icon">
-            <iconset resource="resource.qrc">
+            <iconset>
              <normaloff>:/icon/home.png</normaloff>:/icon/home.png</iconset>
            </property>
            <property name="iconSize">
@@ -274,7 +274,7 @@
             <string>Map</string>
            </property>
            <property name="icon">
-            <iconset resource="resource.qrc">
+            <iconset>
              <normaloff>:/icon/map.png</normaloff>:/icon/map.png</iconset>
            </property>
            <property name="iconSize">
@@ -302,7 +302,7 @@
             <string>Chart</string>
            </property>
            <property name="icon">
-            <iconset resource="resource.qrc">
+            <iconset>
              <normaloff>:/icon/chart.png</normaloff>:/icon/chart.png</iconset>
            </property>
            <property name="iconSize">
@@ -330,7 +330,7 @@
             <string>Video</string>
            </property>
            <property name="icon">
-            <iconset resource="resource.qrc">
+            <iconset>
              <normaloff>:/icon/youtube.png</normaloff>:/icon/youtube.png</iconset>
            </property>
            <property name="iconSize">
@@ -344,6 +344,13 @@
            </property>
            <property name="autoExclusive">
             <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="Image_display_btn">
+           <property name="text">
+            <string>Image</string>
            </property>
           </widget>
          </item>
@@ -373,7 +380,7 @@
           <string>Exit</string>
          </property>
          <property name="icon">
-          <iconset resource="resource.qrc">
+          <iconset>
            <normaloff>:/icon/cancel.png</normaloff>:/icon/cancel.png</iconset>
          </property>
          <property name="iconSize">
@@ -438,7 +445,7 @@
              <string/>
             </property>
             <property name="icon">
-             <iconset resource="resource.qrc">
+             <iconset>
               <normaloff>:/icon/list.png</normaloff>:/icon/list.png</iconset>
             </property>
             <property name="iconSize">
@@ -488,7 +495,7 @@
                <string/>
               </property>
               <property name="icon">
-               <iconset resource="resource.qrc">
+               <iconset>
                 <normaloff>:/icon/search.png</normaloff>:/icon/search.png</iconset>
               </property>
               <property name="iconSize">
@@ -520,7 +527,7 @@
        <item>
         <widget class="QStackedWidget" name="stackedWidget">
          <property name="currentIndex">
-          <number>1</number>
+          <number>5</number>
          </property>
          <widget class="QWidget" name="page">
           <layout class="QGridLayout" name="gridLayout_2">
@@ -840,7 +847,7 @@
                     <string>無人機姿態</string>
                    </property>
                    <property name="icon">
-                    <iconset resource="resource.qrc">
+                    <iconset>
                      <normaloff>:/icon/uav.png</normaloff>:/icon/uav.png</iconset>
                    </property>
                    <property name="iconSize">
@@ -885,7 +892,7 @@
                  <string>Openfile</string>
                 </property>
                 <property name="icon">
-                 <iconset resource="resource.qrc">
+                 <iconset>
                   <normaloff>:/icon/open-folder.png</normaloff>:/icon/open-folder.png</iconset>
                 </property>
                 <property name="iconSize">
@@ -984,7 +991,7 @@
                     <string>Openfile</string>
                    </property>
                    <property name="icon">
-                    <iconset resource="resource.qrc">
+                    <iconset>
                      <normaloff>:/icon/open-folder.png</normaloff>:/icon/open-folder.png</iconset>
                    </property>
                    <property name="iconSize">
@@ -1037,7 +1044,7 @@
                     <string>Stop</string>
                    </property>
                    <property name="icon">
-                    <iconset resource="resource.qrc">
+                    <iconset>
                      <normaloff>:/icon/stop-button.png</normaloff>:/icon/stop-button.png</iconset>
                    </property>
                    <property name="iconSize">
@@ -1071,7 +1078,7 @@
                     <string>Pause</string>
                    </property>
                    <property name="icon">
-                    <iconset resource="resource.qrc">
+                    <iconset>
                      <normaloff>:/icon/video-pause-button.png</normaloff>:/icon/video-pause-button.png</iconset>
                    </property>
                    <property name="iconSize">
@@ -1105,7 +1112,7 @@
                     <string>Play</string>
                    </property>
                    <property name="icon">
-                    <iconset resource="resource.qrc">
+                    <iconset>
                      <normaloff>:/icon/play-button.png</normaloff>:/icon/play-button.png</iconset>
                    </property>
                    <property name="iconSize">
@@ -1144,6 +1151,52 @@
            </item>
           </layout>
          </widget>
+         <widget class="QWidget" name="page_6">
+          <property name="enabled">
+           <bool>true</bool>
+          </property>
+          <widget class="QPushButton" name="Image_display">
+           <property name="geometry">
+            <rect>
+             <x>50</x>
+             <y>520</y>
+             <width>131</width>
+             <height>31</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>顯示即時影像</string>
+           </property>
+          </widget>
+          <widget class="QLabel" name="display_image">
+           <property name="enabled">
+            <bool>true</bool>
+           </property>
+           <property name="geometry">
+            <rect>
+             <x>40</x>
+             <y>20</y>
+             <width>801</width>
+             <height>471</height>
+            </rect>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>801</width>
+             <height>471</height>
+            </size>
+           </property>
+           <property name="autoFillBackground">
+            <bool>false</bool>
+           </property>
+           <property name="text">
+            <string>display_image</string>
+           </property>
+           <property name="buddy">
+            <cstring>display_image</cstring>
+           </property>
+          </widget>
+         </widget>
         </widget>
        </item>
       </layout>
@@ -1171,8 +1224,8 @@
    <slot>setVisible(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>181</x>
-     <y>23</y>
+     <x>175</x>
+     <y>32</y>
     </hint>
     <hint type="destinationlabel">
      <x>42</x>
@@ -1187,8 +1240,8 @@
    <slot>setHidden(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>180</x>
-     <y>30</y>
+     <x>175</x>
+     <y>32</y>
     </hint>
     <hint type="destinationlabel">
      <x>112</x>
@@ -1207,8 +1260,8 @@
      <y>78</y>
     </hint>
     <hint type="destinationlabel">
-     <x>80</x>
-     <y>78</y>
+     <x>142</x>
+     <y>62</y>
     </hint>
    </hints>
   </connection>
@@ -1219,8 +1272,8 @@
    <slot>setChecked(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>117</x>
-     <y>65</y>
+     <x>142</x>
+     <y>62</y>
     </hint>
     <hint type="destinationlabel">
      <x>45</x>
@@ -1239,8 +1292,8 @@
      <y>99</y>
     </hint>
     <hint type="destinationlabel">
-     <x>130</x>
-     <y>106</y>
+     <x>142</x>
+     <y>85</y>
     </hint>
    </hints>
   </connection>
@@ -1251,8 +1304,8 @@
    <slot>setChecked(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>101</x>
-     <y>100</y>
+     <x>142</x>
+     <y>85</y>
     </hint>
     <hint type="destinationlabel">
      <x>37</x>
@@ -1267,8 +1320,8 @@
    <slot>close()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>164</x>
-     <y>840</y>
+     <x>143</x>
+     <y>647</y>
     </hint>
     <hint type="destinationlabel">
      <x>377</x>
@@ -1283,8 +1336,8 @@
    <slot>close()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>58</x>
-     <y>840</y>
+     <x>60</x>
+     <y>647</y>
     </hint>
     <hint type="destinationlabel">
      <x>39</x>
@@ -1299,12 +1352,12 @@
    <slot>setChecked(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>42</x>
-     <y>136</y>
+     <x>52</x>
+     <y>133</y>
     </hint>
     <hint type="destinationlabel">
-     <x>103</x>
-     <y>138</y>
+     <x>142</x>
+     <y>108</y>
     </hint>
    </hints>
   </connection>
@@ -1315,12 +1368,12 @@
    <slot>setChecked(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>138</x>
-     <y>149</y>
+     <x>142</x>
+     <y>108</y>
     </hint>
     <hint type="destinationlabel">
-     <x>45</x>
-     <y>139</y>
+     <x>55</x>
+     <y>133</y>
     </hint>
    </hints>
   </connection>
@@ -1331,12 +1384,12 @@
    <slot>setChecked(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>34</x>
-     <y>163</y>
+     <x>44</x>
+     <y>157</y>
     </hint>
     <hint type="destinationlabel">
-     <x>93</x>
-     <y>182</y>
+     <x>142</x>
+     <y>131</y>
     </hint>
    </hints>
   </connection>
@@ -1347,12 +1400,12 @@
    <slot>setChecked(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>79</x>
-     <y>163</y>
+     <x>142</x>
+     <y>131</y>
     </hint>
     <hint type="destinationlabel">
-     <x>39</x>
-     <y>169</y>
+     <x>49</x>
+     <y>157</y>
     </hint>
    </hints>
   </connection>
