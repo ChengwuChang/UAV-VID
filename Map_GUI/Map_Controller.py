@@ -14,6 +14,7 @@ from Map_GUI_sidebar import Ui_MainWindow
 from video_controller_gpu import video_controller
 from Visual_navigation import navigation
 from PyTeapot_csv import PyTeapot
+from display_images import ImageDisplayer
 
 
 class WebEnginePage(QtWebEngineWidgets.QWebEnginePage):
@@ -46,6 +47,8 @@ class MainWindow_controller(QMainWindow):
         self.ui.icon_only_widget.hide()
         self.ui.stackedWidget.setCurrentIndex(0)
         self.ui.home_btn_2.setChecked(True)
+        # 初始化 ImageDisplayer
+        self.image_displayer = ImageDisplayer(self.ui.display_image, "output_frames")
 
         # 連接按鈕點擊信號與對應的槽函數
         self.ui.home_btn_1.clicked.connect(self.on_home_btn_1_togged)
@@ -56,7 +59,9 @@ class MainWindow_controller(QMainWindow):
         self.ui.chart_btn_2.clicked.connect(self.on_chart_btn_2_togged)
         self.ui.video_btn_1.clicked.connect(self.on_video_btn_1_togged)
         self.ui.video_btn_2.clicked.connect(self.on_video_btn_2_togged)
-
+        # 連接 Image_display 按鈕的點擊事件到 display_images 方法
+        self.ui.Image_display_btn.clicked.connect(self.Image_display_btn_toggled)
+        self.ui.Image_display.clicked.connect(self.display_images)
         # initial parameters
         self.t = np.zeros(10)
         self.y = np.zeros(10)
@@ -78,6 +83,7 @@ class MainWindow_controller(QMainWindow):
 
         self.pyteapot_thread = None
 
+
         # functions
         self.navigation
         self.plot_data()
@@ -89,6 +95,13 @@ class MainWindow_controller(QMainWindow):
         self.ui.pushButton_5.clicked.connect(self.start_visualization)
         self.ui.chart_open_file_btn.clicked.connect(self.load_csv)
 
+
+    def display_images(self):
+        self.image_displayer.display_current_image()
+
+        # 如果你有設置其他按鈕來瀏覽圖片（下一張、上一張），可以在這裡連接
+        # self.ui.next_button.clicked.connect(self.image_displayer.next_image)
+        # self.ui.prev_button.clicked.connect(self.image_displayer.previous_image)
     def start_visualization(self):
         if self.pyteapot_thread is None or not self.pyteapot_thread.isRunning():
             self.pyteapot_thread = PyTeapotThread()
@@ -152,7 +165,8 @@ class MainWindow_controller(QMainWindow):
 
     def on_video_btn_2_togged(self):
         self.ui.stackedWidget.setCurrentIndex(3)
-
+    def Image_display_btn_toggled(self):
+        self.ui.stackedWidget.setCurrentIndex(5)
     def plot_data(self):
         # set canvas
         pg.setConfigOptions(leftButtonPan=True)
