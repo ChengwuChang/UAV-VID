@@ -62,6 +62,10 @@ class MainWindow_controller(QMainWindow):
         # 連接 Image_display 按鈕的點擊事件到 display_images 方法
         self.ui.Image_display_btn.clicked.connect(self.Image_display_btn_toggled)
         self.ui.Image_display.clicked.connect(self.display_images)
+        self.ui.last_page.clicked.connect(self.image_displayer.previous_image)
+        self.ui.next_page.clicked.connect(self.image_displayer.next_image)
+        self.ui.exit_display.clicked.connect(self.image_displayer.exit_display)
+        self.ui.auto_display.clicked.connect(self.image_displayer.toggle_auto_play)
         # initial parameters
         self.t = np.zeros(10)
         self.y = np.zeros(10)
@@ -90,6 +94,7 @@ class MainWindow_controller(QMainWindow):
         self.folium_map()
         self.setup_control()
 
+
     def setup_control(self):
         self.ui.pushButton_4.clicked.connect(self.video_play)
         self.ui.pushButton_5.clicked.connect(self.start_visualization)
@@ -98,10 +103,11 @@ class MainWindow_controller(QMainWindow):
 
     def display_images(self):
         self.image_displayer.display_current_image()
-
-        # 如果你有設置其他按鈕來瀏覽圖片（下一張、上一張），可以在這裡連接
-        # self.ui.next_button.clicked.connect(self.image_displayer.next_image)
-        # self.ui.prev_button.clicked.connect(self.image_displayer.previous_image)
+    # def toggle_auto_display(self):
+    #     if self.image_displayer.auto_playing:
+    #         self.image_displayer.stop_auto_play()
+    #     else:
+    #         self.image_displayer.start_auto_play()
     def start_visualization(self):
         if self.pyteapot_thread is None or not self.pyteapot_thread.isRunning():
             self.pyteapot_thread = PyTeapotThread()

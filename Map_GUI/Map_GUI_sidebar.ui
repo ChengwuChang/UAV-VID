@@ -1165,7 +1165,7 @@
             </rect>
            </property>
            <property name="text">
-            <string>顯示即時影像</string>
+            <string>顯示影像</string>
            </property>
           </widget>
           <widget class="QLabel" name="display_image">
@@ -1190,12 +1190,70 @@
             <bool>false</bool>
            </property>
            <property name="text">
-            <string>display_image</string>
+            <string/>
            </property>
            <property name="buddy">
             <cstring>display_image</cstring>
            </property>
           </widget>
+          <widget class="QPushButton" name="last_page">
+           <property name="geometry">
+            <rect>
+             <x>410</x>
+             <y>520</y>
+             <width>75</width>
+             <height>23</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>上一張</string>
+           </property>
+          </widget>
+          <widget class="QPushButton" name="next_page">
+           <property name="geometry">
+            <rect>
+             <x>520</x>
+             <y>520</y>
+             <width>75</width>
+             <height>23</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>下一張</string>
+           </property>
+          </widget>
+          <widget class="QPushButton" name="exit_display">
+           <property name="geometry">
+            <rect>
+             <x>630</x>
+             <y>520</y>
+             <width>75</width>
+             <height>23</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>退出</string>
+           </property>
+          </widget>
+          <widget class="QPushButton" name="auto_display">
+           <property name="geometry">
+            <rect>
+             <x>210</x>
+             <y>520</y>
+             <width>75</width>
+             <height>23</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>即時影像化</string>
+           </property>
+          </widget>
+          <zorder>display_image</zorder>
+          <zorder>Image_display</zorder>
+          <zorder>last_page</zorder>
+          <zorder>next_page</zorder>
+          <zorder>exit_display</zorder>
+          <zorder>auto_display</zorder>
          </widget>
         </widget>
        </item>
