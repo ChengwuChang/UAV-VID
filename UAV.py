@@ -99,15 +99,36 @@ def show_matched_blocks(query_image, matched_indices, blocks):
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
-def merge_blocks_into_one_image(all_blocks,blocks, num_rows, num_cols):
+def merge_blocks_into_one_image(all_blocks, blocks, best_index, num_rows, num_cols):
     block_height, block_width = all_blocks[0].shape[:2]
-    merged_image = np.zeros((num_rows * block_height // 2, num_cols * block_width // 2, 3), dtype=np.uint8)
-    for r in range(num_rows):
-        for c in range(num_cols):
-            block_index = r * num_cols + c
-            block = cv2.resize(blocks[block_index], (block_width // 2, block_height // 2))  # Resize each block
-            merged_image[r * block_height // 2:(r + 1) * block_height // 2, c * block_width // 2:(c + 1) * block_width // 2] = block
+
+    if len(blocks) == 9:  # 3x3
+        merged_image = np.zeros((3 * block_height // 2, 3 * block_width // 2, 3), dtype=np.uint8)
+        rows, cols = 3, 3
+    elif len(blocks) == 6:  # 2x3
+        merged_image = np.zeros((2 * block_height // 2, 3 * block_width // 2, 3), dtype=np.uint8)
+        rows, cols = 2, 3
+    elif len(blocks) == 4:  # 2x2
+        merged_image = np.zeros((2 * block_height // 2, 2 * block_width // 2, 3), dtype=np.uint8)
+        rows, cols = 2, 2
+    else:
+        raise ValueError("不支援的塊數量")
+
+    # 確保所有塊的尺寸一致
+    target_height = block_height // 2
+    target_width = block_width // 2
+
+    for r in range(rows):
+        for c in range(cols):
+            block_index = r * cols + c
+            if block_index < len(blocks):
+                block = blocks[block_index]
+                # 調整圖像塊的大小以確保尺寸一致
+                block_resized = cv2.resize(block, (target_width, target_height))
+                merged_image[r * target_height:(r + 1) * target_height, c * target_width:(c + 1) * target_width] = block_resized
+
     return merged_image
+
 
 def rotate_point(x, y, cx, cy, angle):
     # Convert angle to radians
@@ -186,13 +207,11 @@ total_path = 0
 # -------------------------------------------------------------------------
 
 # center_points = []#若只有第二張沒有顯示兩個點把center point移到這邊
-
-def main(all_blocks,blocks,image,block_height,block_width):
+def main(all_blocks, blocks, image, block_height, block_width):
     matches = match_features(image, blocks)
-    # best_index, surrounding_indices = find_most_matched_and_surrounding_indices(matches, all_blocks, num_rows, num_cols)
     most_matched_block_index = find_most_matched_block(matches)
     best_index = None
-    for j in range(0, (num_cols * num_rows)):
+    for j in range(num_cols * num_rows):
         if np.array_equal(all_blocks[j], blocks[most_matched_block_index]):
             best_index = j
             break
@@ -202,30 +221,24 @@ def main(all_blocks,blocks,image,block_height,block_width):
 
     most_matched_block = all_blocks[best_index]
     surrounding_blocks = [all_blocks[i] for i in surrounding_indices]
-    # 將最匹配的區塊和周圍的區塊合併為一個列表
     blocks_to_match = [most_matched_block] + surrounding_blocks
     block_indices = []
 
     for i, block_to_match in enumerate(blocks_to_match):
-        # 初始化索引
         block_index = None
-        # 尋找 block_to_match 在 blocks 中的索引
         for j, block in enumerate(all_blocks):
-            # 如果兩個陣列相等，則找到索引
             if np.array_equal(block_to_match, block):
                 block_index = j
                 break
 
         if block_index is not None:
             block_indices.append(block_index)
-            # print(f"區塊 {i}: 在 blocks 中的索引 = {block_index}")
         else:
             print(f"區塊 {i}: 找不到在 blocks 中的對應索引")
     block_indices_sorted = sorted(block_indices)
     print(f'blocks 中的對應索引為 {block_indices_sorted}')
-    # show_matched_blocks(image, block_indices_sorted, blocks)
-    # merged_image = merge_blocks_into_one_image([all_blocks[index] for index in block_indices_sorted], 3, 3)
-    merged_image = merge_blocks_into_one_image([all_blocks[index] for index in block_indices_sorted], best_index,3, 3)
+
+    merged_image = merge_blocks_into_one_image(all_blocks, [all_blocks[index] for index in block_indices_sorted], best_index, num_rows, num_cols)
     center_points = []
     center, rotation_angle = identify(center_points, merged_image, image, best_index, num_rows, num_cols, block_width,
                                       block_height)
@@ -260,14 +273,14 @@ def main(all_blocks,blocks,image,block_height,block_width):
     path_file = os.path.join(folder_name, f'path_{total_path}.jpg')
     blocks = get_blocks_by_indices(all_blocks, block_indices_sorted)
     cv2.imwrite(path_file, big_map_img)
-    total_path + 1  # 有可能會沒+1 但理論上應該會存成path_0 path2
+    # total_path + 1  # 有可能會沒+1 但理論上應該會存成path_0 path2
 
     # cv2.imshow('Merged Image', merged_image)
     # cv2.waitKey(0)
 
     # sorted_blocks = [blocks[index] for index in block_indices_sorted]
     blocks = get_blocks_by_indices(all_blocks, block_indices_sorted)
-    return blocks
+    # return blocks
 
 
 start_time = time.time()
