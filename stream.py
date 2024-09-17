@@ -2,11 +2,13 @@ import time
 import cv2
 import os
 import shutil
+import pyautogui
 from threading import Thread, Lock
 from UAV import split_image, main
 
 # 定義調整參數
-big_map_img = cv2.imread("Big_map_collect/test_big_map.png")
+big_map_img = cv2.imread("Big_map_collect/test_big_map0917.jpg")
+
 
 # 指定要分割的行和列數
 num_rows = 6
@@ -47,6 +49,7 @@ image_folder_drone = 'UAV_path-drone'
 clear_folder(image_folder_drone)
 os.makedirs(image_folder_drone, exist_ok=True)
 
+center_points = []
 # 創建 UAV_path 資料夾，作為存檔資料夾
 image_folder_record = 'UAV_path'
 os.makedirs(image_folder_record, exist_ok=True)
@@ -89,7 +92,7 @@ def process_image():
             # 嘗試使用 main 函數進行處理
             # main(all_blocks, blocks, process_frame, block_height, block_width)
             try:
-                main(all_blocks, blocks, process_frame, block_height, block_width)
+                blocks = main(all_blocks, blocks, process_frame, block_height, block_width,center_points)
 
                 # 如果處理成功，保存處理結果到 UAV_path 和 UAV_path-drone
                 output_image_drone = os.path.join(image_folder_drone, f'path_{frame_count}.jpg')
@@ -125,6 +128,7 @@ try:
             break
 
         # 顯示實時影像幀
+
         cv2.imshow('RTSP Stream', frame)
 
         with lock:
@@ -138,12 +142,20 @@ try:
                 process_frame = frame.copy()
 
         # 顯示 UAV_path-drone 資料夾中的最新圖片
+        screen_width, screen_height = pyautogui.size()
         latest_image = get_latest_image(image_folder_drone)
         if latest_image:
-            path_image = cv2.imread(latest_image)
+            # path_image = cv2.imread(latest_image)
+            path_image = cv2.imread("UAV_path-drone/path_0.jpg")
+            height, width, _ = path_image.shape
+            aspect_ratio = width / height
+            new_width = screen_width // 2
+            new_height = int(new_width / aspect_ratio)
+            # 縮放圖像大小
+            resized_image = cv2.resize(path_image, (new_width, new_height))
             image_name = os.path.basename(latest_image)
             cv2.setWindowTitle('Path_Image', image_name)
-            cv2.imshow('Path_Image', path_image)
+            cv2.imshow('Path_Image', resized_image)
 
         end_time = time.time()
         # print("顯示幀所花時間 = %.3f 秒" % (end_time - start_time))

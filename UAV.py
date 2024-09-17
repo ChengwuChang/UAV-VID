@@ -4,6 +4,7 @@ import numpy as np
 import math
 import time
 
+
 folder_name = "UAV_path-drone"  # 定義文件夾名稱
 # 定義 FLANN 參數
 FLANN_INDEX_KDTREE = 1
@@ -193,7 +194,7 @@ def get_blocks_by_indices(all_blocks, indices):
     blocks = [all_blocks[index] for index in indices]
     return blocks
 
-big_map_img = cv2.imread("Big_map_collect/test_big_map.png")
+big_map_img = cv2.imread("Big_map_collect/test_big_map0917.jpg")
 # # 指定要分割的行和列數
 num_rows = 6
 num_cols = 6
@@ -207,7 +208,7 @@ total_path = 0
 # -------------------------------------------------------------------------
 
 # center_points = []#若只有第二張沒有顯示兩個點把center point移到這邊
-def main(all_blocks, blocks, image, block_height, block_width):
+def main(all_blocks, blocks, image, block_height, block_width,center_points):
     matches = match_features(image, blocks)
     most_matched_block_index = find_most_matched_block(matches)
     best_index = None
@@ -239,7 +240,6 @@ def main(all_blocks, blocks, image, block_height, block_width):
     print(f'blocks 中的對應索引為 {block_indices_sorted}')
 
     merged_image = merge_blocks_into_one_image(all_blocks, [all_blocks[index] for index in block_indices_sorted], best_index, num_rows, num_cols)
-    center_points = []
     center, rotation_angle = identify(center_points, merged_image, image, best_index, num_rows, num_cols, block_width,
                                       block_height)
 
@@ -273,14 +273,14 @@ def main(all_blocks, blocks, image, block_height, block_width):
     path_file = os.path.join(folder_name, f'path_{total_path}.jpg')
     blocks = get_blocks_by_indices(all_blocks, block_indices_sorted)
     cv2.imwrite(path_file, big_map_img)
-    # total_path + 1  # 有可能會沒+1 但理論上應該會存成path_0 path2
+    total_path + 1  # 有可能會沒+1 但理論上應該會存成path_0 path2
 
     # cv2.imshow('Merged Image', merged_image)
     # cv2.waitKey(0)
 
     # sorted_blocks = [blocks[index] for index in block_indices_sorted]
     blocks = get_blocks_by_indices(all_blocks, block_indices_sorted)
-    # return blocks
+    return blocks
 
 
 start_time = time.time()
