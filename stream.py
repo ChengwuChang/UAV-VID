@@ -7,7 +7,7 @@ from threading import Thread, Lock
 from UAV import split_image, main
 
 # 定義調整參數
-big_map_img = cv2.imread("Big_map_collect/test_big_map0917.jpg")
+big_map_img = cv2.imread("Big_map_collect/test_big_map0920.jpg")
 
 
 # 指定要分割的行和列數
@@ -70,7 +70,6 @@ print("當前工作目錄:", current_directory)
 
 # 設置緩衝區大小為1，確保處理的是最新幀
 cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-
 frame_count = 0
 lock = Lock()
 capture_frame = None
@@ -84,33 +83,33 @@ def get_latest_image(folder):
         return latest_file
     return None
 
+blocks = all_blocks  # 初始化 blocks
+
 def process_image():
-    global process_frame
+    global process_frame, blocks
     while True:
         if process_frame is not None:
             start_time = time.time()
-            # 嘗試使用 main 函數進行處理
-            # main(all_blocks, blocks, process_frame, block_height, block_width)
             try:
-                blocks = main(all_blocks, blocks, process_frame, block_height, block_width,center_points)
+                if blocks is None:
+                    blocks = all_blocks
 
-                # 如果處理成功，保存處理結果到 UAV_path 和 UAV_path-drone
+                blocks = main(all_blocks, blocks, process_frame, block_height, block_width, center_points)
+
                 output_image_drone = os.path.join(image_folder_drone, f'path_{frame_count}.jpg')
                 output_image_record = os.path.join(image_folder_record, f'path_{frame_count}.jpg')
-
-                cv2.imwrite(output_image_drone, process_frame)  # 保存到 UAV_path-drone 資料夾
-                cv2.imwrite(output_image_record, process_frame)  # 保存到 UAV_path 資料夾
+                cv2.imwrite(output_image_drone, process_frame)
+                cv2.imwrite(output_image_record, process_frame)
                 print(f"已保存處理後圖片到 {output_image_drone} 和 {output_image_record}")
 
             except Exception as e:
-                # 處理失敗時，顯示錯誤信息並跳過此圖片
                 print(f"處理圖片時發生錯誤: {e}")
 
             end_time = time.time()
             print("辨識流程所花時間 = %.3f 秒" % (end_time - start_time))
 
             with lock:
-                process_frame = None  # 清空要處理的影像
+                process_frame = None
 
 try:
     processing_thread = Thread(target=process_image, daemon=True)
@@ -119,20 +118,13 @@ try:
     while cap.isOpened():
         start_time = time.time()
 
-        # 讀取一幀視頻
         ret, frame = cap.read()
 
-        # 檢查是否成功讀取
         if not ret:
             print("無法讀取視頻幀")
             break
 
-        # 顯示實時影像幀
-
-        cv2.imshow('RTSP Stream', frame)
-
         with lock:
-            # 存取影像並準備進行辨識
             if process_frame is None:
                 frame_count += 1
                 image_path = os.path.join(output_folder, f"frame_{frame_count}.jpg")
@@ -140,27 +132,24 @@ try:
                 print(f"已儲存 {image_path}")
 
                 process_frame = frame.copy()
+                blocks = all_blocks  # 確保每次都重設 blocks
 
-        # 顯示 UAV_path-drone 資料夾中的最新圖片
         screen_width, screen_height = pyautogui.size()
         latest_image = get_latest_image(image_folder_drone)
         if latest_image:
-            # path_image = cv2.imread(latest_image)
             path_image = cv2.imread("UAV_path-drone/path_0.jpg")
             height, width, _ = path_image.shape
             aspect_ratio = width / height
             new_width = screen_width // 2
             new_height = int(new_width / aspect_ratio)
-            # 縮放圖像大小
+
             resized_image = cv2.resize(path_image, (new_width, new_height))
             image_name = os.path.basename(latest_image)
-            cv2.setWindowTitle('Path_Image', image_name)
+            cv2.namedWindow('Path_Image', cv2.WINDOW_NORMAL)
             cv2.imshow('Path_Image', resized_image)
 
         end_time = time.time()
-        # print("顯示幀所花時間 = %.3f 秒" % (end_time - start_time))
 
-        # 按下 'q' 鍵退出循環
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
