@@ -3,8 +3,8 @@ import numpy as np  # 導入 NumPy 庫，用於數組操作
 import cv2  # 導入 OpenCV 庫，用於影像處理
 
 # 地面站的 IP 和埠號
-HOST = '地面站的IP'  # 替換成地面站的 IP
-PORT = 9000        # 與地面站使用的埠號一致，注意防火牆通行
+HOST = '地面站的IP'  # 替換成地面站的 IP 用cmd: ipconfig查
+PORT = 9000        # 與地面站使用的埠號一致，注意防火牆通行#學長說這個要再查
 
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # 創建一個 TCP 客戶端套接字
 client.connect((HOST, PORT))  # 連接到指定的地面站 IP 和埠號
