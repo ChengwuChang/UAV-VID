@@ -1,0 +1,92 @@
+# import socket  # 導入 socket 庫，用於網路通訊
+import numpy as np  # 導入 NumPy 庫，用於數組操作
+import cv2  # 導入 OpenCV 庫，用於影像處理
+import socket
+import time
+
+HOST = ('192.168.0.7')
+PORT = 12345
+
+# s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+# s.connect((HOST, PORT))
+# #要先連接圖傳，接著跑這段程式，再跑電腦的程式
+# # RTSP 串流地址
+# url = 'rtsp://admin:53373957@192.168.144.108:554/cam/realmonitor?channel=1&subtype=1'
+#
+# while True:
+#     outdata = input('please input message: ')
+#     print('send: ' + outdata)
+#     s.send(outdata.encode())
+#
+#     indata = s.recv(1024)
+#     if len(indata) == 0:  # connection closed
+#         s.close()
+#         print('server closed connection.')
+#         break
+#     print('recv: ' + indata.decode())
+
+
+# 設置客戶端的 TCP socket
+client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+client.connect((HOST, PORT))  # 連接至伺服端
+print("已連接至伺服端")
+
+# RTSP 串流地址
+url = 'rtsp://admin:53373957@192.168.144.108:554/cam/realmonitor?channel=1&subtype=1'
+cap = cv2.VideoCapture(url)  # 使用 OpenCV 打開 RTSP 串流
+
+# try:
+#     frame_count = 0  # 用於統計發送影像的數量
+#     while True:
+#         ret, frame = cap.read()  # 從攝影機獲取一幀影像
+#         if not ret:
+#             print("無法接收影像，結束傳輸")
+#             break
+#
+#         # 將影像編碼為字節數據
+#         _, buffer = cv2.imencode('.jpg', frame)
+#         data = np.array(buffer)
+#         stringData = data.tobytes()
+#
+#         # 發送數據長度和影像數據
+#         client.send(str(len(stringData)).ljust(16).encode('utf-8'))
+#         client.send(stringData)
+#         frame_count += 1
+#         print(f"已發送影像幀數: {frame_count}")
+#
+# finally:
+#     # 釋放資源
+#     cap.release()
+#     client.close()
+#     print("傳輸結束，連接已關閉")
+
+
+try:
+    frame_count = 0  # 用於統計發送影像的數量
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            print("無法接收影像，結束傳輸")
+            break
+
+        # 處理幀
+        _, buffer = cv2.imencode('.jpg', frame)
+        data = np.array(buffer)
+        stringData = data.tobytes()
+
+        # 發送數據
+        try:
+            client.send(str(len(stringData)).ljust(16).encode('utf-8'))
+            client.send(stringData)
+            frame_count += 1
+            print(f"已發送影像幀數: {frame_count}")
+        except Exception as e:
+            print(f"發送數據時發生錯誤: {e}")
+            break
+
+        time.sleep(0.5)  # 可選：根據需要調整延遲
+
+finally:
+    cap.release()
+    client.close()
+    print("傳輸結束，連接已關閉")
