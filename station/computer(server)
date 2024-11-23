@@ -1,0 +1,92 @@
+import time
+
+import cv2  # 導入 OpenCV 庫，用於影像處理
+import socket  # 導入 socket 庫，用於網路通訊
+import numpy as np  # 導入 NumPy 庫，用於數組操作
+#找IP
+##ipconfig
+
+
+# 設定伺服器端的 TCP socket
+HOST = '192.168.0.7'  # 接收 IP
+PORT = 12345        # 使用的埠號，還要注意防火牆能允許這樣的流量
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # 創建一個 TCP 套接字
+server.bind((HOST, PORT))  # 綁定 IP 和埠號
+server.listen(1)  # 開始監聽來自客戶端的連接請求
+
+
+print('server start at: %s:%s' % (HOST, PORT))
+print('wait for connection...')
+#
+# #測試訊息傳輸
+# while True:
+#
+#     conn, addr = server.accept()
+#     print('connected by ' + str(addr))
+#
+#     while True:
+#         indata = conn.recv(1024)
+#         if len(indata) == 0: # connection closed
+#             conn.close()
+#             print('client closed connection.')
+#             break
+#         print('recv: ' + indata.decode())
+#
+#         outdata = 'echo ' + indata.decode()
+#         conn.send(outdata.encode())
+
+#實際功能操作
+
+print('伺服器啟動於: %s:%s' % (HOST, PORT))
+print('等待連接...')
+
+# 接受連線
+conn, addr = server.accept()
+print('已連接:', addr)
+
+try:
+    while True:
+        # 接收數據長度，並確保長度正確接收
+        try:
+            length = conn.recv(16).decode('utf-8').strip()
+            length = int(length)  # 將長度轉換為整數
+        except (ValueError, UnicodeDecodeError)as e:
+
+            print("接收數據長度失敗，error:",e)
+            # time.sleep(1)
+            continue  # 如果接收長度失敗，重新接收
+
+        # 接收影像數據
+        data = b""
+        while len(data) < length:
+            packet = conn.recv(4096)
+            if not packet:
+                break
+            data += packet
+
+        # 確保數據完整
+        if len(data) != length:
+            print("數據不完整，重試接收...")
+            continue
+
+        # 解碼影像
+        frame_data = np.frombuffer(data, np.uint8)
+        frame = cv2.imdecode(frame_data, cv2.IMREAD_COLOR)
+
+        if frame is not None:
+            cv2.imshow("接收到的影像", frame)
+        else:
+            print("影像解碼失敗")
+
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+finally:
+    conn.close()
+    server.close()
+    cv2.destroyAllWindows()
+
+
+
+socket.close()
+
