@@ -1,5 +1,6 @@
 import time
-
+import os
+import shutil
 import cv2  # 導入 OpenCV 庫，用於影像處理
 import socket  # 導入 socket 庫，用於網路通訊
 import numpy as np  # 導入 NumPy 庫，用於數組操作
@@ -8,19 +9,19 @@ import numpy as np  # 導入 NumPy 庫，用於數組操作
 
 
 # 設定伺服器端的 TCP socket
-HOST = '192.168.0.7'  # 接收 IP
+HOST = '192.168.1.6'  # 接收 IP
 PORT = 12345        # 使用的埠號，還要注意防火牆能允許這樣的流量
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # 創建一個 TCP 套接字
 server.bind((HOST, PORT))  # 綁定 IP 和埠號
 server.listen(1)  # 開始監聽來自客戶端的連接請求
 
 
-print('server start at: %s:%s' % (HOST, PORT))
-print('wait for connection...')
+
 #
-# #測試訊息傳輸
+#測試訊息傳輸
+# print('server start at: %s:%s' % (HOST, PORT))
+# print('wait for connection...')
 # while True:
-#
 #     conn, addr = server.accept()
 #     print('connected by ' + str(addr))
 #
@@ -40,20 +41,42 @@ print('wait for connection...')
 print('伺服器啟動於: %s:%s' % (HOST, PORT))
 print('等待連接...')
 
+def clear_folder(folder_path):
+    if not os.path.exists(folder_path):
+        print(f"資料夾 {folder_path} 不存在")
+        return
+
+    for filename in os.listdir(folder_path):
+        file_path = os.path.join(folder_path, filename)
+        try:
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+        except Exception as e:
+            print(f"刪除 {file_path} 時發生錯誤: {e}")
+
+# 清空 UAV_path-drone 資料夾，確保地圖存入
+image_folder_drone = 'UAV_path-drone'
+clear_folder(image_folder_drone)
+i = 0
+
 # 接受連線
 conn, addr = server.accept()
 print('已連接:', addr)
 
 try:
     while True:
+        # 回應地面站，允許發送影像
+        conn.send("NEXT".ljust(16).encode('utf-8'))
+        print("准許發送影像")
+
         # 接收數據長度，並確保長度正確接收
         try:
             length = conn.recv(16).decode('utf-8').strip()
             length = int(length)  # 將長度轉換為整數
         except (ValueError, UnicodeDecodeError)as e:
-
             print("接收數據長度失敗，error:",e)
-            # time.sleep(1)
             continue  # 如果接收長度失敗，重新接收
 
         # 接收影像數據
@@ -61,22 +84,32 @@ try:
         while len(data) < length:
             packet = conn.recv(4096)
             if not packet:
+                print("客戶端斷開連接")
                 break
             data += packet
 
         # 確保數據完整
         if len(data) != length:
-            print("數據不完整，重試接收...")
+            print("數據長度不匹配，丟棄該幀")
+            conn.send("ERROR".ljust(16).encode('utf-8'))
             continue
 
         # 解碼影像
-        frame_data = np.frombuffer(data, np.uint8)
-        frame = cv2.imdecode(frame_data, cv2.IMREAD_COLOR)
+        try:
+            frame_data = np.frombuffer(data, np.uint8)  # 將數據轉換為 NumPy 陣列
+            frame = cv2.imdecode(frame_data, cv2.IMREAD_COLOR)  # 解碼為 OpenCV 圖像格式
+        except Exception as e:
+            print("影像解碼失敗，錯誤訊息:", e)
+            continue
 
         if frame is not None:
-            cv2.imshow("接收到的影像", frame)
+            photo_folder = os.path.join(image_folder_drone,f'frame_{i}.jpg')
+            cv2.imwrite(photo_folder, frame)
+            i= i+1
+            cv2.imshow("The recv", frame)
         else:
             print("影像解碼失敗")
+            conn.send("ERROR".ljust(16).encode('utf-8'))
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
