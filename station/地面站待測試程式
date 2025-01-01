@@ -56,6 +56,9 @@ try:
             client.send(stringData)  # 發送影像字節數據
             frame_count += 1  # 計數器加一
             print(f"已發送影像幀數: {frame_count}")  # 輸出發送幀數
+            time.sleep(5)
+            print("等待5秒後再傳遞下一張圖片")
+
 
 except Exception as e:  # 捕獲所有異常
     print(f"發送數據時發生錯誤: {e}")  # 打印異常信息
