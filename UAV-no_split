@@ -6,7 +6,27 @@ import cv2 as cv
 from scipy.spatial import KDTree
 import open3d as o3d
 import math
-
+from openpyxl import Workbook, load_workbook
+wb = Workbook()
+ws = wb.active
+ws.title = "Coordinates"
+ws.append(["X", "Y"])  # 表頭: X 和 Y
+excel_file = "Coordinates(no_split).xlsx"
+# folder_name = "test_path"  # 定義文件夾名稱
+def clear_excel_content(file_name):
+    try:
+        # 加載現有的 Excel 檔案
+        wb = load_workbook(file_name)
+        for sheet in wb.worksheets:
+            # 清空每個工作表內容
+            for row in sheet.iter_rows():
+                for cell in row:
+                    cell.value = None
+        # 儲存更改
+        wb.save(file_name)
+        print(f"Excel 檔案 {file_name} 已清空內容！")
+    except FileNotFoundError:
+        print(f"檔案 {file_name} 不存在！")
 
 def video_screen_shot(video_file,output_folder):
     # video_file = '14/dav/14/14-1-4.mp4'   # 输入影片檔案名稱
@@ -21,12 +41,12 @@ def video_screen_shot(video_file,output_folder):
         return
 
     fps = cap.get(cv2.CAP_PROP_FPS)    # 取得影片幀率
-    frame_interval = int(fps * 3)
+    frame_interval = int(fps * 1)
 
     frame_count = 0
     total_frames = 0
 
-    while cap.isOpened() and total_frames < 150:
+    while cap.isOpened() and total_frames < 200:
         ret, frame = cap.read()
         if not ret:
             break
@@ -51,7 +71,7 @@ def rotate_point(x, y, cx, cy, angle):
     return x_rotated, y_rotated
 
 
-folder_name = "UAV_path"  # 定義文件夾名稱
+folder_name = "test_path"  # 定義文件夾名稱
 current_dir = os.path.dirname(os.path.realpath(__file__))
 folder_path = os.path.join(current_dir, folder_name)   # 使用os.path.join連接路径和文件夾名稱
 if not os.path.exists(folder_path):   # 檢查是否存在
@@ -63,11 +83,11 @@ else:
 
 # -------------------------------------------------------
 
-video_file_name = '14/dav/14/14-1-4.mp4'
-output_folder_name = 'output_frames'
-big_map_img = '14/jpg/14/23/23-1.jpg'
+video_file_name = 'ztest/2024-12-25-low-480.mp4'
+output_folder_name = 'capture_frame_no_split'
+big_map_img = 'Big_map_collect/2024-12-25-bigmap.jpg'
 total_frames = video_screen_shot(video_file_name,output_folder_name)
-
+clear_excel_content(excel_file)
 MIN_MATCH_COUNT = 10
 img3 = cv2.imread(big_map_img, 1) # trainImage
 sift = cv2.SIFT_create() # 初始化 SIFT 檢測器
@@ -95,7 +115,7 @@ total_path = 0
 frame_count = 40
 
 for i in range(0, total_frames):
-    img = cv2.imread(f'output_frames/frame_{i}.jpg', 1)  # queryImage
+    img = cv2.imread(f'captured_frames/frame_{i}.jpg', 1)  # queryImage
     # 使用 SIFT 找到關鍵點和描述子
     kp1, des1 = sift.detectAndCompute(img, None)
     # 進行特徵匹配
@@ -189,74 +209,77 @@ for i in range(0, total_frames):
         vertices_rotated = np.array([vertex1_rotated, vertex2_rotated, vertex3_rotated], dtype=np.int32)
         cv.fillPoly(img3, [vertices_rotated], color=(0+20*i, 255-20*i, 0))
         # 將所有中心點連接成直線
+        print("座標",center_x,center_y)
         for i in range(len(center_points) - 1):
             cv.line(img3, tuple(map(int, center_points[i])), tuple(map(int, center_points[i + 1])), color2, 10)
         #存進檔案中
-        frame_file = os.path.join('UAV_path', f'path_{total_path}.jpg')
+        frame_file = os.path.join('test_path', f'path_{total_path}.jpg')
         cv2.imwrite(frame_file, img3)
+        ws.append([center_x,center_y])
+        wb.save(excel_file)
+        print(f"數據已成功儲存至 {excel_file}")
         total_path += 1
         print("------------")
     else:
         print(f"Not enough matches are found in frame {i} - {len(good)}/{MIN_MATCH_COUNT}")
 
-# SHOW
-image_folder = "UAV_path"
-image_folder2 = "output_frames"
+# # SHOW
+# image_folder = "UAV_path"
+# image_folder2 = "output_frames"
+#
+# image_files = [os.path.join(image_folder, file) for file in os.listdir(image_folder) if os.path.isfile(os.path.join(image_folder, file))]
+# image_files2 = [os.path.join(image_folder2, file) for file in os.listdir(image_folder2) if os.path.isfile(os.path.join(image_folder2, file))]
+#
+# # 螢幕寬度為1920
+# screen_width = 1920
+#
+# # 移動到左半螢幕
+# cv2.namedWindow('Image', cv2.WINDOW_NORMAL)
+# cv2.moveWindow('Image', 0, 0)
+# # 移動動右半螢幕
+# cv2.namedWindow('Image2', cv2.WINDOW_NORMAL)
+# cv2.moveWindow('Image2', 960, 0)
+#
+#
+# for i in range(0,total_frames):
+#     image = cv2.imread(f'UAV_path/path_{i}.jpg',1)
+#     # 取得影像的寬度和高度，計算影像的長寬比
+#     height, width, _ = image.shape
+#     aspect_ratio = width / height
+#
+#     # 將影像寬度調整為螢幕寬度的一半，高度按比例縮放
+#     new_width = screen_width // 2
+#     new_height = int(new_width / aspect_ratio)
+#     # 縮放圖像大小
+#     resized_image = cv2.resize(image, (new_width, new_height))
+#     image_name = os.path.basename(f'UAV_path/path_{i}.jpg')
+#     # 在視窗中顯示影像名稱顯示縮放後的圖片
+#     cv2.setWindowTitle('Image', image_name)
+#     cv2.imshow('Image', resized_image)
+#
+#
+#     image2 = cv2.imread(f'output_frames/frame_{i}.jpg',1)
+#     if image2 is None:
+#         print(f"Unable to read image: output_frames/frame_{i}.jpg")
+#         continue
+#     # 获取图像的宽度和高度，計算影像的長寬比
+#     height2, width2, _ = image2.shape
+#     aspect_ratio2 = width2 / height2
+#
+#     # 將影像寬度調整為螢幕寬度的一半，高度按比例縮放
+#     new_height2 = int(new_width / aspect_ratio2)
+#     resized_image2 = cv2.resize(image2, (new_width, new_height2))
+#     # 獲得名字
+#     image_name2 = os.path.basename(f'output_frames/frame_{i}.jpg')
+#     # 顯示圖像名稱
+#     cv2.setWindowTitle('Image2', image_name2)
+#     cv2.imshow('Image2', resized_image2)
+#     # 等待0.4秒
+#     cv2.waitKey(500)
 
-image_files = [os.path.join(image_folder, file) for file in os.listdir(image_folder) if os.path.isfile(os.path.join(image_folder, file))]
-image_files2 = [os.path.join(image_folder2, file) for file in os.listdir(image_folder2) if os.path.isfile(os.path.join(image_folder2, file))]
-
-# 螢幕寬度為1920
-screen_width = 1920
-
-# 移動到左半螢幕
-cv2.namedWindow('Image', cv2.WINDOW_NORMAL)
-cv2.moveWindow('Image', 0, 0)
-# 移動動右半螢幕
-cv2.namedWindow('Image2', cv2.WINDOW_NORMAL)
-cv2.moveWindow('Image2', 960, 0)
-
-
-for i in range(0,total_frames):
-    image = cv2.imread(f'UAV_path/path_{i}.jpg',1)
-    # 取得影像的寬度和高度，計算影像的長寬比
-    height, width, _ = image.shape
-    aspect_ratio = width / height
-
-    # 將影像寬度調整為螢幕寬度的一半，高度按比例縮放
-    new_width = screen_width // 2
-    new_height = int(new_width / aspect_ratio)
-    # 縮放圖像大小
-    resized_image = cv2.resize(image, (new_width, new_height))
-    image_name = os.path.basename(f'UAV_path/path_{i}.jpg')
-    # 在視窗中顯示影像名稱顯示縮放後的圖片
-    cv2.setWindowTitle('Image', image_name)
-    cv2.imshow('Image', resized_image)
-
-
-    image2 = cv2.imread(f'output_frames/frame_{i}.jpg',1)
-    if image2 is None:
-        print(f"Unable to read image: output_frames/frame_{i}.jpg")
-        continue
-    # 获取图像的宽度和高度，計算影像的長寬比
-    height2, width2, _ = image2.shape
-    aspect_ratio2 = width2 / height2
-
-    # 將影像寬度調整為螢幕寬度的一半，高度按比例縮放
-    new_height2 = int(new_width / aspect_ratio2)
-    resized_image2 = cv2.resize(image2, (new_width, new_height2))
-    # 獲得名字
-    image_name2 = os.path.basename(f'output_frames/frame_{i}.jpg')
-    # 顯示圖像名稱
-    cv2.setWindowTitle('Image2', image_name2)
-    cv2.imshow('Image2', resized_image2)
-    # 等待0.4秒
-    cv2.waitKey(500)
-
-print(aspect_ratio)
-print(aspect_ratio2)
-cv2.destroyAllWindows()
-
+# print(aspect_ratio)
+# print(aspect_ratio2)
+# cv2.destroyAllWindows()
 
 
 
