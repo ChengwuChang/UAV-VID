@@ -3,8 +3,14 @@ import cv2
 import numpy as np
 import math
 import time
+from openpyxl import Workbook, load_workbook
 
-folder_name = "UAV_path-drone"  # 定義文件夾名稱
+wb = Workbook()
+ws = wb.active
+ws.title = "Coordinates"
+ws.append(["X", "Y"])  # 表頭: X 和 Y
+excel_file = "coordinates.xlsx"
+folder_name = "test_path"  # 定義文件夾名稱
 # 定義 FLANN 參數
 FLANN_INDEX_KDTREE = 1
 index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=5)
@@ -33,6 +39,21 @@ def split_image(image, num_rows, num_cols):
             block = image[start_row:end_row, start_col:end_col]
             blocks.append(block)
     return blocks,block_height,block_width
+def clear_excel_content(file_name):
+    try:
+        # 加載現有的 Excel 檔案
+        wb = load_workbook(file_name)
+        for sheet in wb.worksheets:
+            # 清空每個工作表內容
+            for row in sheet.iter_rows():
+                for cell in row:
+                    cell.value = None
+        # 儲存更改
+        wb.save(file_name)
+        print(f"Excel 檔案 {file_name} 已清空內容！")
+    except FileNotFoundError:
+        print(f"檔案 {file_name} 不存在！")
+
 def match_features(query_image, train_images):
     # 初始化 SIFT 檢測器
     sift = cv2.SIFT_create()
@@ -53,6 +74,7 @@ def match_features(query_image, train_images):
             if m.distance < 0.7 * n.distance:
                 good_matches.append(m)
         all_matches.append(len(good_matches))
+        
     return all_matches
 
 def find_most_matched_block(matches):
@@ -196,9 +218,12 @@ def identify(center_points,merge_image,img,best_index,num_rows,num_cols,block_wi
     big_map_center_x = merge_map_center[0][0][0]+(((best_index-1) %  num_cols) +0.5) * block_width
     big_map_center_y = merge_map_center[0][0][1]+(((best_index-1) // num_cols) ) * block_height
 
+    ws.append([big_map_center_x,big_map_center_y])
+    wb.save(excel_file)
+    print(f"數據已成功儲存至 {excel_file}")
     center_points.append((big_map_center_x, big_map_center_y))
     print(merge_map_center[0][0][0],merge_map_center[0][0][1])
-    print(center_points)
+    # print(center_points)
     rotation_angle = np.arctan2(M1[1, 0], M1[0, 0]) * 180 / np.pi
     return center_points ,rotation_angle
 
@@ -216,7 +241,7 @@ def get_blocks_by_indices(all_blocks, indices):
     blocks = [all_blocks[index] for index in indices]
     return blocks
 
-big_map_img = cv2.imread("Big_map_collect/23-2.jpg")
+big_map_img = cv2.imread("Big_map_collect/2024-12-25-bigmap.jpg")
 # 指定要分割的行和列數
 num_rows = 6
 num_cols = 6
@@ -225,14 +250,17 @@ new_num_rows = 3
 new_num_cols = 3
 all_blocks,block_height,block_width = split_image(big_map_img, num_rows, num_cols)
 blocks = all_blocks
-output_folder_name = "output_frames"
-num = len(os.listdir("output_frames"))
-
+# output_folder_name = "output_frames"
+# num = len(os.listdir("output_frames"))
+output_folder_name = "captured_frames"
+num = len(os.listdir("captured_frames"))
+center_points = []
 # -------------------------------------------------------------------------
 def main(blocks):
     total_path = 0
-    for i in range(1, num+1):
-        image = cv2.imread(f'{output_folder_name}/frame_{i-1}.jpg')
+
+    for i in range(0, num+1):
+        image = cv2.imread(f'{output_folder_name}/frame_{i}.jpg')
         matches = match_features(image, blocks)
         # #測試
         # best_index, surrounding_indices = find_most_matched_and_surrounding_indices(matches, all_blocks, num_rows,
@@ -283,9 +311,10 @@ def main(blocks):
         # show_matched_blocks(image, block_indices_sorted, blocks)
         # merged_image = merge_blocks_into_one_image([all_blocks[index] for index in block_indices_sorted], 3, 3)
         merged_image = merge_blocks_into_one_image([all_blocks[index] for index in block_indices_sorted], best_index, num_rows, num_cols)
-        center_points = []
+        # center_points = []
 
         center, rotation_angle = identify(center_points,merged_image, image,best_index,num_rows,num_cols,block_width,block_height)
+
 
         for point in center_points:
             center_x, center_y = map(int, point)
@@ -328,6 +357,7 @@ def main(blocks):
         # sorted_blocks = [blocks[index] for index in block_indices_sorted]
         blocks = get_blocks_by_indices(all_blocks, block_indices_sorted)
 start_time = time.time()
+clear_excel_content(excel_file)
 main(blocks)
 
 # cv2.waitKey(0)
