@@ -1,0 +1,4 @@
+把下面的github程式安裝好後，確認可以執行後，
+https://github.com/utiasDSL/gym-pybullet-drones/tree/main
+
+將在example中的pid.py改成這資料夾內的PID_re
