@@ -22,7 +22,8 @@ class PID_RL(BaseAviary):
                  record=False,
                  obstacles=False,
                  user_debug_gui=True,
-                 output_folder='results'
+                 output_folder='results',
+                 target_position=None  # 修正
                  ):
 
         super().__init__(drone_model=drone_model,
@@ -37,10 +38,13 @@ class PID_RL(BaseAviary):
                          record=record,
                          obstacles=obstacles,
                          user_debug_gui=user_debug_gui,
-                         output_folder=output_folder
+                         output_folder=output_folder,
                          )
+        # 将目标位置保存在实例变量中
+        self.target_position = target_position if target_position is not None else np.array([0.0, 0.0, 1.0])
 
     ################################################################################
+
 
     def _actionSpace(self):
         """Returns the action space of the environment.
@@ -90,9 +94,10 @@ class PID_RL(BaseAviary):
             An ndarray of shape (NUM_DRONES, 20) with the state of each drone.
 
         """
+
         return np.array([self._getDroneStateVector(i) for i in range(self.NUM_DRONES)])
 
-    ################################################################################
+
 
     def _preprocessAction(self,
                           action
@@ -129,30 +134,33 @@ class PID_RL(BaseAviary):
 
         """
         """計算當前的獎勵值"""
+        x = np.array([self._getDroneStateVector(i) for i in range(self.NUM_DRONES)])
+        Prev_pos = x[:, :3]
+        pos_error = np.linalg.norm(Prev_pos - self.target_position, axis=1)
         reward = 0.0
+        """將target_pos與Prev_pos做相減運算"""
+        # for i in range(self.NUM_DRONES):
+        #     state = self._getDroneStateVector(i)
+        #
+        #     # 1. 位置誤差懲罰
+        #     target_pos = np.array([0.0, 0.0, 1.0])  # 目標位置 (可變)
+        #     pos = state[0:3]
+        #     pos_error = np.linalg.norm(pos - target_pos)  # 位置誤差
+        #     reward -= pos_error * 5.0  # 越接近目標獎勵越高
 
-        for i in range(self.NUM_DRONES):
-            state = self._getDroneStateVector(i)
-
-            # 1. 位置誤差懲罰
-            target_pos = np.array([0.0, 0.0, 1.0])  # 目標位置 (可變)
-            pos = state[0:3]
-            pos_error = np.linalg.norm(pos - target_pos)  # 位置誤差
-            reward -= pos_error * 5.0  # 越接近目標獎勵越高
-
-            # 2. 姿態誤差懲罰
-            target_rpy = np.array([0.0, 0.0, 0.0])  # 理想姿態 (roll, pitch, yaw)
-            rpy = state[7:10]
-            rpy_error = np.linalg.norm(rpy - target_rpy)
-            reward -= rpy_error * 2.0  # 避免過大角度偏移
-
-            # 3. 速度懲罰
-            vel = state[10:13]
-            reward -= np.linalg.norm(vel) * 0.5  # 限制速度太快
-
-            # 4. 能量消耗 (RPM 輸出) 懲罰
-            motor_rpm = state[16:20]
-            reward -= np.sum(motor_rpm) * 1e-5  # 減少不必要的動力輸出
+            # # 2. 姿態誤差懲罰
+            # target_rpy = np.array([0.0, 0.0, 0.0])  # 理想姿態 (roll, pitch, yaw)
+            # rpy = state[7:10]
+            # rpy_error = np.linalg.norm(rpy - target_rpy)
+            # reward -= rpy_error * 2.0  # 避免過大角度偏移
+            #
+            # # 3. 速度懲罰
+            # vel = state[10:13]
+            # reward -= np.linalg.norm(vel) * 0.5  # 限制速度太快
+            #
+            # # 4. 能量消耗 (RPM 輸出) 懲罰
+            # motor_rpm = state[16:20]
+            # reward -= np.sum(motor_rpm) * 1e-5  # 減少不必要的動力輸出
         return -1
 
     ################################################################################
@@ -201,6 +209,9 @@ class PID_RL(BaseAviary):
             Dummy value.
 
         """
+        # """判斷當前 episode 是否因時間限制被截斷"""
+        # max_steps = 1000
+        # return self.step_counter >= max_steps
         return False
 
     ################################################################################
