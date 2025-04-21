@@ -50,6 +50,8 @@ DEFAULT_DURATION_SEC = 12
 DEFAULT_OUTPUT_FOLDER = 'results'
 DEFAULT_COLAB = False
 
+prev_position = [[0, 0, 0] for _ in range(DEFAULT_NUM_DRONES)]
+TARGET_position = []
 def run(
         drone=DEFAULT_DRONES,
         num_drones=DEFAULT_NUM_DRONES,
@@ -71,36 +73,19 @@ def run(
     R = .3
     INIT_XYZS = np.array([[R*np.cos((i/6)*2*np.pi+np.pi/2), R*np.sin((i/6)*2*np.pi+np.pi/2)-R, H+i*H_STEP] for i in range(num_drones)])
     INIT_RPYS = np.array([[0, 0,  i * (np.pi/2)/num_drones] for i in range(num_drones)])
-
+    for j in range(num_drones): #紀錄起始位置
+        prev_position[j] = INIT_XYZS[j]
     #### Initialize a circular trajectory ######################
     PERIOD = 10
     NUM_WP = control_freq_hz*PERIOD
     TARGET_POS = np.zeros((NUM_WP,3))
     for i in range(NUM_WP):
         TARGET_POS[i, :] = R*np.cos((i/NUM_WP)*(2*np.pi)+np.pi/2)+INIT_XYZS[0, 0], R*np.sin((i/NUM_WP)*(2*np.pi)+np.pi/2)-R+INIT_XYZS[0, 1], 0
+        TARGET_position.append(TARGET_POS[i, :])
+        # print(f"TARGET_POS = {TARGET_POS[i]}")
+        # print("target_position =",TARGET_position)
     wp_counters = np.array([int((i*NUM_WP/6)%NUM_WP) for i in range(num_drones)])
 
-
-    #### Debug trajectory ######################################
-    #### Uncomment alt. target_pos in .computeControlFromState()
-    # INIT_XYZS = np.array([[.3 * i, 0, .1] for i in range(num_drones)])
-    # INIT_RPYS = np.array([[0, 0,  i * (np.pi/3)/num_drones] for i in range(num_drones)])
-    # NUM_WP = control_freq_hz*15
-    # TARGET_POS = np.zeros((NUM_WP,3))
-    # for i in range(NUM_WP):
-    #     if i < NUM_WP/6:
-    #         TARGET_POS[i, :] = (i*6)/NUM_WP, 0, 0.5*(i*6)/NUM_WP
-    #     elif i < 2 * NUM_WP/6:
-    #         TARGET_POS[i, :] = 1 - ((i-NUM_WP/6)*6)/NUM_WP, 0, 0.5 - 0.5*((i-NUM_WP/6)*6)/NUM_WP
-    #     elif i < 3 * NUM_WP/6:
-    #         TARGET_POS[i, :] = 0, ((i-2*NUM_WP/6)*6)/NUM_WP, 0.5*((i-2*NUM_WP/6)*6)/NUM_WP
-    #     elif i < 4 * NUM_WP/6:
-    #         TARGET_POS[i, :] = 0, 1 - ((i-3*NUM_WP/6)*6)/NUM_WP, 0.5 - 0.5*((i-3*NUM_WP/6)*6)/NUM_WP
-    #     elif i < 5 * NUM_WP/6:
-    #         TARGET_POS[i, :] = ((i-4*NUM_WP/6)*6)/NUM_WP, ((i-4*NUM_WP/6)*6)/NUM_WP, 0.5*((i-4*NUM_WP/6)*6)/NUM_WP
-    #     elif i < 6 * NUM_WP/6:
-    #         TARGET_POS[i, :] = 1 - ((i-5*NUM_WP/6)*6)/NUM_WP, 1 - ((i-5*NUM_WP/6)*6)/NUM_WP, 0.5 - 0.5*((i-5*NUM_WP/6)*6)/NUM_WP
-    # wp_counters = np.array([0 for i in range(num_drones)])
 
     #### Create the environment ################################
     env = PID_RL(drone_model=drone,
@@ -127,42 +112,35 @@ def run(
                     colab=colab
                     )
 
-    #### Initialize the controllers ############################
-    if drone in [DroneModel.CF2X, DroneModel.CF2P]:
-        ctrl = [DSLPIDControl(drone_model=drone) for i in range(num_drones)]
+
 
     #### Run the simulation ####################################
-    action = np.zeros((num_drones,4))
+
+    action = np.array([[1.5, 1.5, 1.5] for _ in range(num_drones)])  # 初始 PID 參數（可由 RL 調整）
     START = time.time()
-    for i in range(0, int(duration_sec*env.CTRL_FREQ)):
+    for i in range(0, int(duration_sec * env.CTRL_FREQ)):
 
-        #### Make it rain rubber ducks #############################
-        # if i/env.SIM_FREQ>5 and i%10==0 and i/env.SIM_FREQ<10: p.loadURDF("duck_vhacd.urdf", [0+random.gauss(0, 0.3),-0.5+random.gauss(0, 0.3),3], p.getQuaternionFromEuler([random.randint(0,360),random.randint(0,360),random.randint(0,360)]), physicsClientId=PYB_CLIENT)
+        #### 傳入目標位置給環境控制 #############################
+        target_now = np.array([
+            [*TARGET_POS[wp_counters[j], 0:2], INIT_XYZS[j, 2]]
+            for j in range(num_drones)
+        ])
+        env.set_target_position(target_now)
 
-        #### Step the simulation ###################################
+        #### Step 環境讓他自己控制 ##############################
         obs, reward, terminated, truncated, info = env.step(action)
-
-        #### Compute control for the current way point #############
-        for j in range(num_drones):
-            action[j, :], _, _ = ctrl[j].computeControlFromState(control_timestep=env.CTRL_TIMESTEP,
-                                                                    state=obs[j],
-                                                                    target_pos=np.hstack([TARGET_POS[wp_counters[j], 0:2], INIT_XYZS[j, 2]]),
-                                                                    # target_pos=INIT_XYZS[j, :] + TARGET_POS[wp_counters[j], :],
-                                                                    target_rpy=INIT_RPYS[j, :]
-                                                                    )
 
         #### Go to the next way point and loop #####################
         for j in range(num_drones):
-            wp_counters[j] = wp_counters[j] + 1 if wp_counters[j] < (NUM_WP-1) else 0
+            wp_counters[j] = wp_counters[j] + 1 if wp_counters[j] < (NUM_WP - 1) else 0
 
         #### Log the simulation ####################################
         for j in range(num_drones):
             logger.log(drone=j,
-                       timestamp=i/env.CTRL_FREQ,
+                       timestamp=i / env.CTRL_FREQ,
                        state=obs[j],
-                       control=np.hstack([TARGET_POS[wp_counters[j], 0:2], INIT_XYZS[j, 2], INIT_RPYS[j, :], np.zeros(6)])
-                       # control=np.hstack([INIT_XYZS[j, :]+TARGET_POS[wp_counters[j], :], INIT_RPYS[j, :], np.zeros(6)])
-                       )
+                       control=np.hstack(
+                           [TARGET_POS[wp_counters[j], 0:2], INIT_XYZS[j, 2], INIT_RPYS[j, :], np.zeros(6)]))
 
         #### Printout ##############################################
         env.render()
@@ -170,6 +148,51 @@ def run(
         #### Sync the simulation ###################################
         if gui:
             sync(i, START, env.CTRL_TIMESTEP)
+
+
+    ###########################################################
+    #### Initialize the controllers ############################
+    # if drone in [DroneModel.CF2X, DroneModel.CF2P]:
+    #     ctrl = [DSLPIDControl(drone_model=drone) for i in range(num_drones)]
+    # action = np.zeros((num_drones,4))
+    # START = time.time()
+    # for i in range(0, int(duration_sec*env.CTRL_FREQ)):
+    #
+    #     #### Make it rain rubber ducks #############################
+    #     # if i/env.SIM_FREQ>5 and i%10==0 and i/env.SIM_FREQ<10: p.loadURDF("duck_vhacd.urdf", [0+random.gauss(0, 0.3),-0.5+random.gauss(0, 0.3),3], p.getQuaternionFromEuler([random.randint(0,360),random.randint(0,360),random.randint(0,360)]), physicsClientId=PYB_CLIENT)
+    #
+    #     #### Step the simulation ###################################
+    #     obs, reward, terminated, truncated, info = env.step(action)
+    #     print("obs=",obs)
+    #     #### Compute control for the current way point #############
+    #     for j in range(num_drones):
+    #         action[j, :], _, _ = ctrl[j].computeControlFromState(control_timestep=env.CTRL_TIMESTEP,
+    #                                                                 state=obs[j],
+    #                                                                 target_pos=np.hstack([TARGET_POS[wp_counters[j], 0:2], INIT_XYZS[j, 2]]),
+    #                                                                 # target_pos=INIT_XYZS[j, :] + TARGET_POS[wp_counters[j], :],
+    #                                                                 target_rpy=INIT_RPYS[j, :]
+    #                                                                 )
+    #         # print("target_pos=",TARGET_position)
+    #
+    #     #### Go to the next way point and loop #####################
+    #     for j in range(num_drones):
+    #         wp_counters[j] = wp_counters[j] + 1 if wp_counters[j] < (NUM_WP-1) else 0
+    #
+    #     #### Log the simulation ####################################
+    #     for j in range(num_drones):
+    #         logger.log(drone=j,
+    #                    timestamp=i/env.CTRL_FREQ,
+    #                    state=obs[j],
+    #                    control=np.hstack([TARGET_POS[wp_counters[j], 0:2], INIT_XYZS[j, 2], INIT_RPYS[j, :], np.zeros(6)])
+    #                    # control=np.hstack([INIT_XYZS[j, :]+TARGET_POS[wp_counters[j], :], INIT_RPYS[j, :], np.zeros(6)])
+    #                    )
+    #
+    #     #### Printout ##############################################
+    #     env.render()
+    #
+    #     #### Sync the simulation ###################################
+    #     if gui:
+    #         sync(i, START, env.CTRL_TIMESTEP)
 
     #### Close the environment #################################
     env.close()
