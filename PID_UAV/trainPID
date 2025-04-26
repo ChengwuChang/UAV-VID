@@ -1,0 +1,44 @@
+from stable_baselines3 import PPO
+from Pid_RL import PIDTuningEnv
+import json
+import numpy as np
+
+# 建立環境
+env = PIDTuningEnv(gui=False)
+
+# 建立 PPO 模型
+model = PPO("MlpPolicy", env, verbose=0)
+
+# 分段訓練並顯示參數
+TOTAL_SEGMENTS = 10
+STEPS_PER_SEGMENT = 5
+
+for i in range(TOTAL_SEGMENTS):
+    print(f"\n🚀 開始訓練區段 {i+1}/{TOTAL_SEGMENTS}（共 {STEPS_PER_SEGMENT} 步）")
+    model.learn(total_timesteps=STEPS_PER_SEGMENT, reset_num_timesteps=False)
+    obs = env.reset()
+    action, _ = model.predict(obs)
+    kp, ki, kd, lookahead = action
+    print(f"🎯 推測參數：KP={kp:.3f}, KI={ki:.3f}, KD={kd:.3f}, Lookahead={int(round(lookahead))}")
+
+# 最終輸出最佳參數
+obs = env.reset()
+action, _ = model.predict(obs)
+kp, ki, kd, lookahead = action
+lookahead = int(round(lookahead))
+
+print("\n✅ 強化學習訓練完成")
+print(f"KP = {kp:.4f}, KI = {ki:.4f}, KD = {kd:.4f}, Lookahead = {lookahead}")
+
+# 儲存參數
+best_params = {
+    "KP_XY": float(kp),
+    "KI_XY": float(ki),
+    "KD_XY": float(kd),
+    "Lookahead": lookahead
+}
+
+with open("best_pid_params.json", "w") as f:
+    json.dump(best_params, f, indent=2)
+
+print("\n📝 最佳參數已儲存至 best_pid_params.json")
