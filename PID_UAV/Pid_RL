@@ -1,0 +1,84 @@
+import gym
+from gym import spaces
+import numpy as np
+from gym_pybullet_drones.envs.CtrlAviary import CtrlAviary
+from gym_pybullet_drones.control.DSLPIDControl import DSLPIDControl
+from gym_pybullet_drones.utils.enums import DroneModel, Physics
+
+class PIDTuningEnv(gym.Env):
+    def __init__(self, duration_sec=3, control_freq_hz=120, gui=False):
+        super(PIDTuningEnv, self).__init__()
+
+        self.duration_sec = duration_sec
+        self.control_freq_hz = control_freq_hz
+        self.simulation_freq_hz = 240
+        self.gui = gui
+        self.num_drones = 1
+        self.action_space = spaces.Box(
+            low=np.array([1.0, 0.0, 0.0, 0]),   # KP, KI, KD, lookahead
+            high=np.array([10.0, 0.5, 2.0, 40]),
+            dtype=np.float32
+        )
+        self.observation_space = spaces.Box(
+            low=0.0, high=1000.0, shape=(1,), dtype=np.float32
+        )
+
+    def reset(self):
+        # Not needed for stateless parameter tuning
+        return np.array([0.0], dtype=np.float32)
+
+    def step(self, action):
+        kp, ki, kd, lookahead = action
+        lookahead = int(round(lookahead))
+
+        R = 0.6
+        Z_STEP = 0.0002
+        NUM_WP = self.control_freq_hz * self.duration_sec
+        TARGET_POS = np.zeros((self.num_drones, NUM_WP, 3))
+        for i in range(NUM_WP):
+            angle = (i / NUM_WP) * 2 * np.pi * 2
+            x = R * np.cos(angle)
+            y = R * np.sin(angle)
+            z = 0.1 + i * Z_STEP
+            TARGET_POS[0, i, :] = [x, y, z]
+
+        INIT_XYZS = np.array([TARGET_POS[0, 0, :]])
+        INIT_RPYS = np.array([[0, 0, 0]])
+        wp_counter = 0
+
+        env = CtrlAviary(drone_model=DroneModel.CF2X,
+                         num_drones=self.num_drones,
+                         initial_xyzs=INIT_XYZS,
+                         initial_rpys=INIT_RPYS,
+                         physics=Physics.PYB,
+                         pyb_freq=self.simulation_freq_hz,
+                         ctrl_freq=self.control_freq_hz,
+                         gui=self.gui,
+                         record=False,
+                         obstacles=False,
+                         user_debug_gui=False)
+
+        ctrl = DSLPIDControl(drone_model=DroneModel.CF2X)
+        ctrl.KP_POS = np.array([kp, kp, 2.0])
+        ctrl.KI_POS = np.array([ki, ki, 0.1])
+        ctrl.KD_POS = np.array([kd, kd, 0.8])
+
+        total_error = 0
+        action_arr = np.zeros((1, 4))
+
+        for i in range(0, int(self.duration_sec * self.control_freq_hz)):
+            obs, _, _, _, _ = env.step(action_arr)
+            future_idx = min(wp_counter + lookahead, NUM_WP - 2)
+            target = TARGET_POS[0, future_idx, :]
+            action_arr[0, :], _, _ = ctrl.computeControlFromState(env.CTRL_TIMESTEP, obs[0], target, INIT_RPYS[0])
+            err = np.linalg.norm(obs[0][0:2] - TARGET_POS[0, wp_counter, 0:2])
+            total_error += err
+            wp_counter = min(wp_counter + 1, NUM_WP - 2)
+
+        env.close()
+        reward = -total_error  # Negative error as reward
+        done = True
+        return np.array([total_error], dtype=np.float32), reward, done, {}
+
+    def render(self, mode="human"):
+        pass
