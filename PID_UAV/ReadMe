@@ -2,3 +2,8 @@
 https://github.com/utiasDSL/gym-pybullet-drones/tree/main
 
 將在example中的pid.py改成這資料夾內的PID_re
+
+
+PID_RL.py:許做的RL環境程式
+pid_RL_route_advision.py:許做的RL主要運行程式
+RL_MODEL.py:已訓練好的模型運行程式
