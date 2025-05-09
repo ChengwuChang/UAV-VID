@@ -1,0 +1,108 @@
+import os
+import time
+import numpy as np
+import matplotlib.pyplot as plt
+from stable_baselines3 import DDPG
+from stable_baselines3.common.monitor import Monitor
+from gym_pybullet_drones.envs.PID_RL import PID_RL
+from gym_pybullet_drones.utils.enums import DroneModel, Physics
+from gym_pybullet_drones.utils.Logger import Logger
+from gym_pybullet_drones.utils.utils import sync
+
+# 參數
+MODEL_PATH = "results/ddpg_model.zip"  # 你訓練好的模型
+OUTPUT_FOLDER = "results"
+GUI = True
+PLOT = True
+DURATION_SEC = 12
+CONTROL_FREQ = 48
+SIM_FREQ = 240
+NUM_DRONES = 1
+H = 0.1
+H_STEP = 0.05
+R = 0.3
+
+# 初始位置設定
+INIT_XYZS = np.array([
+    [R * np.cos((i / 6) * 2 * np.pi + np.pi / 2),
+     R * np.sin((i / 6) * 2 * np.pi + np.pi / 2) - R,
+     H + i * H_STEP]
+    for i in range(NUM_DRONES)
+])
+INIT_RPYS = np.array([[0, 0, i * (np.pi / 2) / NUM_DRONES] for i in range(NUM_DRONES)])
+
+# 建立環境
+env = Monitor(PID_RL(
+    drone_model=DroneModel("cf2x"),
+    num_drones=NUM_DRONES,
+    initial_xyzs=INIT_XYZS,
+    initial_rpys=INIT_RPYS,
+    physics=Physics("pyb"),
+    neighbourhood_radius=10,
+    pyb_freq=SIM_FREQ,
+    ctrl_freq=CONTROL_FREQ,
+    gui=GUI,
+    record=False,
+    obstacles=True,
+    user_debug_gui=False
+))
+
+# 載入訓練好的模型
+model = DDPG.load(MODEL_PATH, env=env)
+obs, _ = env.reset()
+logger = Logger(logging_freq_hz=CONTROL_FREQ,
+                num_drones=NUM_DRONES,
+                output_folder=OUTPUT_FOLDER,
+                colab=False)
+
+# 計算軌跡點
+PERIOD = 10
+NUM_WP = CONTROL_FREQ * PERIOD
+TARGET_POS = np.zeros((NUM_WP, 3))
+for i in range(NUM_WP):
+    TARGET_POS[i, :] = [
+        R * np.cos((i / NUM_WP) * 2 * np.pi + np.pi / 2) + INIT_XYZS[0, 0],
+        R * np.sin((i / NUM_WP) * 2 * np.pi + np.pi / 2) - R + INIT_XYZS[0, 1],
+        0
+    ]
+wp_counters = np.array([int((i * NUM_WP / 6) % NUM_WP) for i in range(NUM_DRONES)])
+
+# 執行模擬
+start = time.time()
+for i in range(0, int(DURATION_SEC * CONTROL_FREQ)):
+    action, _ = model.predict(obs, deterministic=True)
+    obs, reward, terminated, truncated, _ = env.step(action)
+    if terminated or truncated:
+        obs, _ = env.reset()
+
+    for j in range(NUM_DRONES):
+        try:
+            logger.log(drone=j,
+                       timestamp=i / CONTROL_FREQ,
+                       state=env.env._getDroneStateVector(j),
+                       control=np.hstack([
+                           TARGET_POS[wp_counters[j], 0:2], INIT_XYZS[j, 2], INIT_RPYS[j, :], np.zeros(6)])
+                       )
+        except Exception as e:
+            print(f"[ERROR] Logger 記錄錯誤：{e}")
+
+    if GUI:
+        env.render()
+        sync(i, start, env.env.CTRL_TIMESTEP)
+
+env.close()
+logger.save()
+logger.save_as_csv("trained_pid")
+
+# 顯示軌跡圖
+if PLOT:
+    logger.plot()
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.plot(TARGET_POS[:, 0], TARGET_POS[:, 1], TARGET_POS[:, 2], label='目標軌跡', linestyle='dashed')
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+    ax.legend()
+    plt.title('無人機飛行軌跡')
+    plt.show()
