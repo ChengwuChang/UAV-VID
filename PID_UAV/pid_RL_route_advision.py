@@ -214,8 +214,9 @@ def run(
     # model.learn(total_timesteps=50)
     # >>>> [1] 訓練模型（訓練完一次，產生模型） <<<<
     MODEL_PATH = os.path.join(output_folder, "ddpg_model")
-    TOTAL_TRAIN_ITER = 5
-    TIMESTEPS_PER_ITER = 50
+    #調整輪數跟訓練次數
+    TOTAL_TRAIN_ITER = 20
+    TIMESTEPS_PER_ITER = 10000
     train_ddpg_model(env, MODEL_PATH, total_iterations=TOTAL_TRAIN_ITER, timesteps_per_iter=TIMESTEPS_PER_ITER)
     model = DDPG.load(MODEL_PATH, env=env)
     # model = train_ddpg_model(env, MODEL_PATH, total_iterations=TOTAL_TRAIN_ITER, timesteps_per_iter=TIMESTEPS_PER_ITER)
@@ -238,34 +239,16 @@ def run(
 
     #### Run the simulation ####################################
 
-
-    # action = np.array([[0.5, 0.5, 0.5,  # P_COEFF_FOR
-    #                     0.01, 0.01, 0.01,  # I_COEFF_FOR
-    #                     80000, 300.0, 30000] for _ in range(num_drones)], dtype=np.float32)  # Torque PID
-
     # action = np.array([[1.0, 1.0, 1.0] for _ in range(num_drones)])  # 初始 PID 參數（可由 RL 調整）
     START = time.time()
     for i in range(0, int(duration_sec * env.env.CTRL_FREQ)):
 
-        # 每次更新目標位置傳入環境
-        # step_target_positions = np.vstack([
-        #     np.hstack([TARGET_POS[wp_counters[j], 0:2], INIT_XYZS[j, 2] + (i * H_STEP / NUM_WP)])
-        #     for j in range(num_drones)
-        # ])
-        #
-        # env.set_target_position(step_target_positions)
-        # model = train_ddpg_model(env, MODEL_PATH, TOTAL_TRAIN_ITER,TIMESTEPS_PER_ITER)
-
-        # action, _ = model.predict(obs, deterministic=True)
         action, _states = model.predict(obs, deterministic=True)
         #### Step 環境讓他自己控制 ##############################
         obs, reward, terminated, truncated, info = env.step(action)
         if terminated or truncated:
             obs, _ = env.reset()
 
-        #### Go to the next way point and loop #####################
-        # for j in range(num_drones):
-        #     wp_counters[j] = wp_counters[j] + 1 if wp_counters[j] < (NUM_WP - 1) else 0
 
         #### Log the simulation ####################################
         for j in range(num_drones):
@@ -294,49 +277,7 @@ def run(
             env.render()
             sync(i, START, env.env.CTRL_TIMESTEP)
 
-    ###########################################################
-    #### Initialize the controllers ############################
-    # if drone in [DroneModel.CF2X, DroneModel.CF2P]:
-    #     ctrl = [DSLPIDControl(drone_model=drone) for i in range(num_drones)]
-    # action = np.zeros((num_drones,4))
-    # START = time.time()
-    # for i in range(0, int(duration_sec*env.CTRL_FREQ)):
-    #
-    #     #### Make it rain rubber ducks #############################
-    #     # if i/env.SIM_FREQ>5 and i%10==0 and i/env.SIM_FREQ<10: p.loadURDF("duck_vhacd.urdf", [0+random.gauss(0, 0.3),-0.5+random.gauss(0, 0.3),3], p.getQuaternionFromEuler([random.randint(0,360),random.randint(0,360),random.randint(0,360)]), physicsClientId=PYB_CLIENT)
-    #
-    #     #### Step the simulation ###################################
-    #     obs, reward, terminated, truncated, info = env.step(action)
-    #     print("obs=",obs)
-    #     #### Compute control for the current way point #############
-    #     for j in range(num_drones):
-    #         action[j, :], _, _ = ctrl[j].computeControlFromState(control_timestep=env.CTRL_TIMESTEP,
-    #                                                                 state=obs[j],
-    #                                                                 target_pos=np.hstack([TARGET_POS[wp_counters[j], 0:2], INIT_XYZS[j, 2]]),
-    #                                                                 # target_pos=INIT_XYZS[j, :] + TARGET_POS[wp_counters[j], :],
-    #                                                                 target_rpy=INIT_RPYS[j, :]
-    #                                                                 )
-    #         # print("target_pos=",TARGET_position)
-    #
-    #     #### Go to the next way point and loop #####################
-    #     for j in range(num_drones):
-    #         wp_counters[j] = wp_counters[j] + 1 if wp_counters[j] < (NUM_WP-1) else 0
-    #
-    #     #### Log the simulation ####################################
-    #     for j in range(num_drones):
-    #         logger.log(drone=j,
-    #                    timestamp=i/env.CTRL_FREQ,
-    #                    state=obs[j],
-    #                    control=np.hstack([TARGET_POS[wp_counters[j], 0:2], INIT_XYZS[j, 2], INIT_RPYS[j, :], np.zeros(6)])
-    #                    # control=np.hstack([INIT_XYZS[j, :]+TARGET_POS[wp_counters[j], :], INIT_RPYS[j, :], np.zeros(6)])
-    #                    )
-    #
-    #     #### Printout ##############################################
-    #     env.render()
-    #
-    #     #### Sync the simulation ###################################
-    #     if gui:
-    #         sync(i, START, env.CTRL_TIMESTEP)
+
 
     #### Close the environment #################################
     env.close()
