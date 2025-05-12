@@ -26,7 +26,11 @@ class PID_RL(BaseAviary):
         # 儲存建構前的參數（BaseAviary 中會用到）
         self._init_drone_model = drone_model
         self._init_num_drones = num_drones
-
+        # if initial_xyzs is None:
+        #     H = 0.1
+        #     initial_xyzs = np.array([[0, 0, H] for _ in range(num_drones)])
+        # if initial_rpys is None:
+        #     initial_rpys = np.zeros((num_drones, 3))
 
         # 呼叫父類別初始化環境（建立場景、無人機等）
         super().__init__(drone_model=drone_model,
@@ -42,18 +46,18 @@ class PID_RL(BaseAviary):
                          obstacles=obstacles,
                          user_debug_gui=user_debug_gui,
                          output_folder=output_folder)
-        self._init_path()
+
         # 初始化每台無人機的 DSLPID 控制器
         self.ctrl = [DSLPIDControl(drone_model=self.DRONE_MODEL) for _ in range(self.NUM_DRONES)]
         self.stuck_counter = np.zeros(self.NUM_DRONES, dtype=int)
+        # 初始化在 __init__ 中
+        self.wp_stay_counter = np.zeros(self.NUM_DRONES, dtype=int)
 
         # 預設目標位置為每台無人機在 (0, 0, 1)
         self.target_position = target_position if target_position is not None else np.array(
             [[0.0, 0.0, 1.0] for _ in range(self.NUM_DRONES)])
+        self._init_path()
 
-    # def set_target_position(self, target_position):
-    #     # 更新目標位置（供外部設定路徑用）
-    #     self.target_position = target_position
 
     def _init_path(self):
         """初始化每台無人機的飛行路徑（圓形路徑為例）"""
@@ -69,11 +73,8 @@ class PID_RL(BaseAviary):
                 x = R * np.cos((i / NUM_WP) * 2 * np.pi + np.pi / 2) + self.INIT_XYZS[j, 0]
                 y = R * np.sin((i / NUM_WP) * 2 * np.pi + np.pi / 2) - R + self.INIT_XYZS[j, 1]
                 z = self.INIT_XYZS[j, 2] + (i * 0.05 / NUM_WP)
-                self.target_positions[j].append(np.array([x, y, z]))
 
-    def set_target_position(self, target_position):
-        assert target_position.shape == (self.NUM_DRONES, 3), "target_position shape must be (num_drones, 3)"
-        self.target_position = target_position
+                self.target_positions[j].append(np.array([x, y, z]))
 
     def _actionSpace(self):
         # 定義每台 drone 的 action 是 9 維（P/I/D for pos, P/I/D for torque）
@@ -82,31 +83,7 @@ class PID_RL(BaseAviary):
         act_upper_bound = np.array(
             [[1.0, 1.0, 1.0, 0.1, 0.1, 0.1] for _ in range(self.NUM_DRONES)])
         return spaces.Box(low=act_lower_bound, high=act_upper_bound, dtype=np.float32)
-#🔸 問題背景：
-# 你目前的 action space 是線性範圍（如 P: 60000 ~ 100000），但：
-#
-# 這樣的控制增益範圍太大
-#
-# RL 很難在這種數值尺度下精細調整
-#
-# 例如從 70000 → 75000 變化太小，RL 模型很難學到這種細微效果
-#
-# 🔸 解法：log scaling
-# 透過 log scale 把 action 映射到一個較穩定、縮放後的範圍。舉例：
-#
-# python
-# 複製
-# 編輯
-# # Action: a ∈ [0, 1] 經過縮放後轉成 PID 參數
-# P = 10**(3 + 2*a[0])     # P ∈ [1000, 100000]
-# I = 10**(-3 + 3*a[1])    # I ∈ [0.001, 1.0]
-# 這樣可讓模型對控制器的變化更敏感。
-#
-# 不過這會牽涉到：
-#
-# 修改 _actionSpace() 定義範圍為 [0, 1]
-#
-# 修改 _preprocessAction() 時要做轉換
+
 #
 # 📌 建議你先完成 baseline 版本，之後若效果不佳，再考慮 log-scaling。
     def _observationSpace(self):
@@ -126,9 +103,6 @@ class PID_RL(BaseAviary):
         return np.array(obs)
 
     def _preprocessAction(self, action):
-        """
-        將 action 從 [0,1] 範圍映射到實際 PID 參數範圍（使用 log-scale）
-        """
         processed = []
         for i in range(self.NUM_DRONES):
             a = action[i]
@@ -153,34 +127,29 @@ class PID_RL(BaseAviary):
         return np.array(processed)
 
     def _computeReward(self):
-        # 根據目標位置與實際位置的距離作為 reward（越近越好）
-        rewards = []
+        total_reward = 0.0
         for i in range(self.NUM_DRONES):
             state = self._getDroneStateVector(i)
             pos = state[:3]
             vel = state[10:13]
-            yaw = state[9]
             target_pos = self.target_position[i]
-            pos_error = np.linalg.norm(pos - target_pos)
-            velocity_penalty = 0.1 * np.linalg.norm(vel)
-            upward_reward = 0.5 * pos[2]  # 鼓勵高度提升
-            if pos_error < 0.1:
-                rewards.append(5.0 - velocity_penalty + upward_reward)
-            else:
-                rewards.append(-pos_error - velocity_penalty + upward_reward)
-            path_dir = self.target_positions[i][(self.wp_counters[i] + 1) % self.NUM_WP] - pos
-            vel_dir = vel / (np.linalg.norm(vel) + 1e-6)
-            dir_alignment = np.dot(path_dir / np.linalg.norm(path_dir), vel_dir)
-            rewards += 0.5 * dir_alignment  # 越對準路徑方向越好
-            # 避免突然加速（鼓勵平穩控制）
-            acc_penalty = np.linalg.norm(np.diff(vel)) if self.step_counter > 1 else 0.0
 
-            # 鼓勵向上飛行（穩定爬升）
+            pos_error = np.linalg.norm(pos - target_pos)
+            vel_penalty = 0.1 * np.linalg.norm(vel)
+            upward_reward = 0.5 * pos[2]
             climb_reward = 0.2 if vel[2] > 0 else -0.1
 
-            rewards = -pos_error - velocity_penalty - 0.1 * acc_penalty + upward_reward + 0.5 * dir_alignment + climb_reward
+            path_dir = self.target_positions[i][(self.wp_counters[i] + 1) % self.NUM_WP] - pos
+            path_dir = path_dir / (np.linalg.norm(path_dir) + 1e-6)
+            vel_dir = vel / (np.linalg.norm(vel) + 1e-6)
+            align_reward = 0.5 * np.dot(path_dir, vel_dir)
 
-        return np.mean(rewards)
+            acc_penalty = 0.0  # 可加速度懲罰（需額外計算）
+
+            reward = -pos_error - vel_penalty + upward_reward + align_reward + climb_reward - 0.1 * acc_penalty
+            total_reward += reward
+
+        return total_reward / self.NUM_DRONES
 
     def _computeTerminated(self):
         # 若 drone 離目標太遠或掉到地面下就觸發結束
@@ -192,13 +161,14 @@ class PID_RL(BaseAviary):
             if dist > 3.0 or pos[2] < 0.05:
                 print(f"[TERMINATE] Drone {i} crashed or flew too far: z={pos[2]:.2f}, dist={dist:.2f}")
                 return True  # 提早終止 episode
-            if np.linalg.norm(state[10:13]) < 0.01:  # 幾乎不動
-                self.stuck_counter[i] += 1
-            else:
-                self.stuck_counter[i] = 0
-            if self.stuck_counter[i] > 100:
-                print(f"[STUCK] Drone {i} seems to be stuck.")
-                return True
+            if self.step_counter > self.CTRL_FREQ * 5:  # 過 baseline 階段再檢查 stuck
+                if np.linalg.norm(state[10:13]) < 0.01:
+                    self.stuck_counter[i] += 1
+                else:
+                    self.stuck_counter[i] = 0
+                if self.stuck_counter[i] > 100:
+                    print(f"[STUCK] Drone {i} seems to be stuck.")
+                    return True
 
         return False
 
@@ -285,24 +255,50 @@ class PID_RL(BaseAviary):
 
         return pos_p, pos_i, pos_d, att_p, att_i, att_d
 
+    def reset(self,
+              seed: int = None,
+              options: dict = None):
+
+
+        p.resetSimulation(physicsClientId=self.CLIENT)
+        #### Housekeeping ##########################################
+        self._housekeeping()
+        #### Update and store the drones kinematic information #####
+        self._updateAndStoreKinematicInformation()
+        #### Start video recording #################################
+        self._startVideoRecording()
+        #### Return the initial observation ########################
+        initial_obs = self._computeObs()
+        initial_info = self._computeInfo()
+        # self._init_path()
+        # self.target_position = np.array([self.target_positions[i][self.wp_counters[i]] for i in range(self.NUM_DRONES)])
+
+        return initial_obs, initial_info
     def step(self,
              action
              ):
-        # print("[DEBUG] Action received from DDPG:", action)
-        # 解析 action 並更新 DSLPID 控制器的 PID 參數
-        # if self.step_counter < self.CTRL_FREQ * 10:
-        #     pos_p, pos_i, pos_d =[.4, .4, 1.25], [.05, .05, .05],[.2, .2, .5]
-        #     att_p, att_i, att_d = [70000., 70000., 60000.], [.0, .0, 500.], [20000., 20000., 12000.]
 
-        if self.step_counter % self.CTRL_FREQ == 0:
+
+        if self.step_counter < self.CTRL_FREQ * 5:  # 前 5 秒使用穩定 PID
+            if self.step_counter == 0:
+                print("[INFO] Using baseline PID for warm-up phase")
+
+            for i in range(self.NUM_DRONES):
+                self.ctrl[i].P_COEFF_FOR = np.array([.4, .4, 1.25])
+                self.ctrl[i].I_COEFF_FOR = np.array([.05, .05, .05])
+                self.ctrl[i].D_COEFF_FOR = np.array([.2, .2, .5])
+                self.ctrl[i].P_COEFF_TOR = np.array([70000., 70000., 60000.])
+                self.ctrl[i].I_COEFF_TOR = np.array([.0, .0, 500.])
+                self.ctrl[i].D_COEFF_TOR = np.array([20000., 20000., 12000.])
+        else:
             for i in range(self.NUM_DRONES):
                 pos_p, pos_i, pos_d, att_p, att_i, att_d = self.action_to_pid_params(action[i])
-                self.ctrl[i].P_COEFF_FOR = np.array([pos_p] * 3)
-                self.ctrl[i].I_COEFF_FOR = np.array([pos_i] * 3)
-                self.ctrl[i].D_COEFF_FOR = np.array([pos_d] * 3)
-                self.ctrl[i].P_COEFF_TOR = np.array([att_p] * 3)
-                self.ctrl[i].I_COEFF_TOR = np.array([att_i] * 3)
-                self.ctrl[i].D_COEFF_TOR = np.array([att_d] * 3)
+                self.ctrl[i].P_COEFF_FOR = np.array([pos_p, pos_p, pos_p])
+                self.ctrl[i].I_COEFF_FOR = np.array([pos_i, pos_i, pos_i])
+                self.ctrl[i].D_COEFF_FOR = np.array([pos_d, pos_d, pos_d])
+                self.ctrl[i].P_COEFF_TOR = np.array([att_p, att_p, att_p])
+                self.ctrl[i].I_COEFF_TOR = np.array([att_i, att_i, att_i])
+                self.ctrl[i].D_COEFF_TOR = np.array([att_d, att_d, att_d])
 
         # ❷ 產生視覺輸出（錄影用，RECORD 模式開啟時）
         # 不影響控制邏輯，可略過
@@ -366,18 +362,18 @@ class PID_RL(BaseAviary):
             clipped_action = np.zeros((self.NUM_DRONES, 4))
 
             for i in range(self.NUM_DRONES):
-                # 目標位置：下一個 waypoint
-                # ❺ 更新當前 drone 的目標 waypoint（螺旋軌跡）
-                # self.target_position[i] = self.target_positions[i][self.wp_counters[i]]
-                # self.wp_counters[i] = (self.wp_counters[i] + 1) % self.NUM_WP
 
                 # 取得 drone 狀態
 
                 state = self._getDroneStateVector(i)
                 # 在 step() 中替換目標點更新邏輯（改為 if 誤差小才跳下一點）
-                if np.linalg.norm(self.target_position[i] - state[:3]) < 0.2:
+                # 更新 waypoint
+                if self.step_counter < self.CTRL_FREQ * 5:
                     self.wp_counters[i] = (self.wp_counters[i] + 1) % self.NUM_WP
-                self.target_position[i] = self.target_positions[i][self.wp_counters[i]]
+                else:
+                    if np.linalg.norm(self.target_position[i] - state[:3]) < 0.05:
+                        self.wp_counters[i] = (self.wp_counters[i] + 1) % self.NUM_WP
+                    self.target_position[i] = self.target_positions[i][self.wp_counters[i]]
 
                 # ❼ 利用 DSLPID 控制器計算對應的 RPM
                 rpm, _, _ = self.ctrl[i].computeControl(
@@ -390,7 +386,7 @@ class PID_RL(BaseAviary):
                     target_rpy=np.zeros(3),
                     target_vel=np.zeros(3),
                 )
-
+                print("rpm:",rpm)
                 clipped_action[i, :] = rpm
         # ❽ 執行實際模擬步進，更新 PyBullet 狀態
         #### Repeat for as many as the aggregate physics steps #####
