@@ -1,0 +1,112 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from gym_pybullet_drones.envs.CtrlAviary import CtrlAviary
+from gym_pybullet_drones.control.DSLPIDControl import DSLPIDControl
+from gym_pybullet_drones.utils.enums import DroneModel, Physics
+from gym_pybullet_drones.utils.utils import sync
+
+duration_sec = 12
+control_freq_hz = 48
+total_steps = duration_sec * control_freq_hz
+R = 0.3
+INIT_Z = 0.1
+UP_SPEED = 0.07
+
+t = np.arange(total_steps) / control_freq_hz
+angle = 2 * np.pi * t / 2.0 + np.pi/2
+ideal_x = R * np.cos(angle)
+ideal_y = R * np.sin(angle) - R
+ideal_z = INIT_Z + UP_SPEED * t
+ideal_traj = np.stack([ideal_x, ideal_y, ideal_z], axis=1)
+
+def simulate(ds_controller):
+
+    env = CtrlAviary(
+        drone_model=DroneModel.CF2X,
+        num_drones=1,
+        initial_xyzs=np.array([[0, 0, INIT_Z]]),
+        initial_rpys=np.array([[0, 0, 0]]),
+        physics=Physics.PYB,
+        neighbourhood_radius=10,
+        pyb_freq=240,
+        ctrl_freq=control_freq_hz,
+        gui=False,
+        record=False,
+        obstacles=False,
+        user_debug_gui=False
+    )
+    obs, _ = env.reset()
+    traj = np.zeros((total_steps, 3))
+
+    # … 前面環境初始化不變 …
+def simulate(ds_controller):
+    env = CtrlAviary(
+        drone_model=DroneModel.CF2X,
+        num_drones=1,
+        initial_xyzs=np.array([[0, 0, INIT_Z]]),
+        initial_rpys=np.array([[0, 0, 0]]),
+        physics=Physics.PYB,
+        neighbourhood_radius=10,
+        pyb_freq=240,
+        ctrl_freq=control_freq_hz,
+        gui=False,
+        record=False,
+        obstacles=False,
+        user_debug_gui=False
+    )
+    obs, _ = env.reset()
+    traj = np.zeros((total_steps, 3))
+
+    for step in range(total_steps):
+        t_sec = step / control_freq_hz
+
+        # 1) 先算出這一步的 target 位置
+        angle = 2 * np.pi * t_sec / 2.0 + np.pi/2
+        target = np.array([
+            R * np.cos(angle),
+            R * np.sin(angle) - R,
+            INIT_Z + UP_SPEED * t_sec
+        ])
+
+        # 2) 用你傳進來的 ds_controller 計算 rpm
+        rpm, _, _ = ds_controller.computeControlFromState(
+            control_timestep=env.CTRL_TIMESTEP,
+            state=obs[0],
+            target_pos=target,
+            target_rpy=np.zeros(3)
+        )
+        # 把 rpm (shape=(4,)) → (1,4)
+        rpm = rpm.reshape((1, 4))
+
+        # 3) 推進模擬一步，並記錄真實位置
+        obs, _, _, _, _ = env.step(rpm)
+        traj[step] = obs[0][:3]
+
+    env.close()
+    return traj
+
+
+default_ctrl = DSLPIDControl(drone_model=DroneModel.CF2X)
+traj_default = simulate(default_ctrl)
+
+P = np.array([0.3334138, 0.3334138, 1.1834138])
+I = np.array([-0.0165862, -0.0165862, -0.0165862])
+D = np.array([0.1334138, 0.1334138, 0.4334138])
+rl_ctrl = DSLPIDControl(drone_model=DroneModel.CF2X)
+rl_ctrl.P_COEFF_FOR = P
+rl_ctrl.I_COEFF_FOR = I
+rl_ctrl.D_COEFF_FOR = D
+traj_rl = simulate(rl_ctrl)
+
+# Plotting
+fig = plt.figure(figsize=(10, 8))
+ax = fig.add_subplot(111, projection='3d')
+ax.plot(traj_default[:, 0], traj_default[:, 1], traj_default[:, 2], label="Default PID")
+ax.plot(ideal_traj[:, 0], ideal_traj[:, 1], ideal_traj[:, 2], label="Ideal Trajectory")
+ax.plot(traj_rl[:, 0], traj_rl[:, 1], traj_rl[:, 2], label="RL-trained PID")
+ax.set_title("Default vs Ideal vs RL-trained PID")
+ax.set_xlabel("X (m)")
+ax.set_ylabel("Y (m)")
+ax.set_zlabel("Z (m)")
+ax.legend()
+plt.show()
